@@ -1,0 +1,2 @@
+#pragma code_page(65001)
+1 /* CREATEPROCESS_MANIFEST_RESOURCE_ID */ 24 /* RT_MANIFEST */ "D:/TUM/FaceReconstruction/src/out/build/x64-Debug/CMakeFiles/faceReconstruction.dir/embed.manifest"
