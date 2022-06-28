@@ -1,9 +1,9 @@
 {
   "ExpandedNodes": [
     "",
-    "\\faceModels",
+    "\\faceModels\\BFM2017",
     "\\src"
   ],
-  "SelectedNode": "\\src\\CMakeLists.txt",
+  "SelectedNode": "\\src\\main.cpp",
   "PreviewInSolutionExplorer": false
 }
