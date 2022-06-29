@@ -1,3 +1,12 @@
 [submodule "dependencies/eigen"]
 	path = dependencies/eigen
 	url = https://gitlab.com/libeigen/eigen.git
+[submodule "dependencies/glog"]
+	path = dependencies/glog
+	url = https://github.com/google/glog.git
+[submodule "dependencies/ceres-solver"]
+	path = dependencies/ceres-solver
+	url = https://github.com/ceres-solver/ceres-solver.git
+[submodule "dependencies/opencv"]
+	path = dependencies/opencv
+	url = https://github.com/opencv/opencv.git
