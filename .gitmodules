@@ -1,12 +1,20 @@
 [submodule "dependencies/eigen"]
 	path = dependencies/eigen
 	url = https://gitlab.com/libeigen/eigen.git
+	ignore = dirty
 [submodule "dependencies/glog"]
 	path = dependencies/glog
 	url = https://github.com/google/glog.git
+	ignore = dirty
 [submodule "dependencies/ceres-solver"]
 	path = dependencies/ceres-solver
 	url = https://github.com/ceres-solver/ceres-solver.git
+	ignore = dirty
 [submodule "dependencies/opencv"]
 	path = dependencies/opencv
 	url = https://github.com/opencv/opencv.git
+	ignore = dirty
+[submodule "dependencies/hdf5"]
+	path = dependencies/hdf5
+	url = https://github.com/HDFGroup/hdf5.git
+	ignore = dirty
