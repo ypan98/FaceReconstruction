@@ -39,7 +39,7 @@ git submodule update --init --recursive
 
 ########### Installing the eigen library ###########
 EIGEN_LIB="$PWD/libs/eigen"
-EIGEN_BUILD="$PWD/eigen/build"
+EIGEN_BUILD="$PWD/dependencies/eigen/build"
 
 if [ ! -d "$EIGEN_LIB" ]; then
 mkdir -p "$EIGEN_BUILD"
@@ -55,7 +55,7 @@ fi
 
 ########### Installing the glog library ###########
 GLOG_LIB="$PWD/libs/glog"
-GLOG_BUILD="$PWD/glog/build"
+GLOG_BUILD="$PWD/dependencies/glog/build"
 
 if [ ! -d "$GLOG_LIB" ]; then
 mkdir -p "$GLOG_LIB"
@@ -73,7 +73,7 @@ fi
 ########### Installing the ceres library ###########
 # Important: glog is a dependency of ceres
 CERES_LIB="$PWD/libs/ceres"
-CERES_BUILD="$PWD/ceres-solver/build_dir"
+CERES_BUILD="$PWD/dependencies/ceres-solver/build_dir"
 
 if [ ! -d "$CERES_LIB" ]; then
 mkdir -p "$CERES_LIB"
@@ -92,7 +92,7 @@ fi
 
 ########### Installing the opencv library ###########
 OPENCV_LIB="$PWD/libs/opencv"
-OPENCV_BUILD="$PWD/opencv/build"
+OPENCV_BUILD="$PWD/dependencies/opencv/build"
 
 if [ ! -d "$OPENCV_LIB" ]; then
 mkdir -p "$OPENCV_LIB"
@@ -111,7 +111,7 @@ fi
 
 ########### Installing the hdf5 library ###########
 HDF5_LIB="$PWD/libs/hdf5"
-HDF5_BUILD="$PWD/hdf5/build"
+HDF5_BUILD="$PWD/dependencies/hdf5/build"
 
 if [ ! -d "$HDF5_LIB" ]; then
 mkdir -p "$HDF5_LIB"
@@ -127,10 +127,24 @@ popd
 fi
 
 ############ Delete the source and the build files of the dependencies ##############
-EIGEN_SOURCE="$PWD/libs/eigen"
-GLOG_SOURCE="$PWD/libs/glog"
-CERES_SOURCE="$PWD/libs/ceres-solver"
-OPENCV_SOURCE="$PWD/libs/opencv"
-HDF5_SOURCE="$PWD/libs/hdf5"
+EIGEN_SOURCE="$PWD/dependencies/eigen"
+GLOG_SOURCE="$PWD/dependencies/glog"
+CERES_SOURCE="$PWD/dependencies/ceres-solver"
+OPENCV_SOURCE="$PWD/dependencies/opencv"
+HDF5_SOURCE="$PWD/dependencies/hdf5"
+
+git submodule deinit -f "$EIGEN_SOURCE"
+git submodule deinit -f "$GLOG_SOURCE"
+git submodule deinit -f "$CERES_SOURCE"
+git submodule deinit -f "$OPENCV_SOURCE"
+git submodule deinit -f "$HDF5_SOURCE"
+
+# In case the deinit command didn't cleared the submodule's folder
+rm -r "$EIGEN_SOURCE/*"
+rm -r "$GLOG_SOURCE/*"
+rm -r "$CERES_SOURCE/*"
+rm -r "$OPENCV_SOURCE/*"
+rm -r "$HDF5_SOURCE/*"
+
 
 
