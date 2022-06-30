@@ -3,7 +3,7 @@
 #include "FaceModel.h"
 #include "DataHandler.h"
 #include "Optimizer.h"
-#include "landmark.h"
+#include "Landmark.h"
 using namespace std;
 
 int imgOption = -1;

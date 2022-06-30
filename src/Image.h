@@ -1,5 +1,9 @@
+#pragma once
+
+#include "Eigen.h"
+
 //store data of the 2D image corresponding to the 3D face model
-class 2DImage{
+class Image{
 
 public:
     // get current color data

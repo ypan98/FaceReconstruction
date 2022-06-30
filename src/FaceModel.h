@@ -1,4 +1,6 @@
-#include "2DImage.h"
+#pragma once
+
+#include "Image.h"
 
 struct Vertex
 {
