@@ -35,3 +35,7 @@
 .vs/
 .idea/
 
+# Build files
+src/out/
+src/build/
+

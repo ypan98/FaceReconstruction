@@ -28,4 +28,5 @@ void rasterizer() {
 
 void main() {
 	handleMenu();
+	return 0;
 }
