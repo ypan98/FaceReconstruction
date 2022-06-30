@@ -126,3 +126,30 @@ cmake .. "${COMMON_CMAKE_ARGS[@]}" \
 make -j$NUM_PARALLEL_BUILDS install
 popd
 fi
+
+############ Delete the source and the build files of the dependencies ##############
+EIGEN_SOURCE="$PWD/eigen"
+GLOG_SOURCE="$PWD/glog"
+CERES_SOURCE="$PWD/ceres-solver"
+OPENCV_SOURCE="$PWD/opencv"
+HDF5_SOURCE="$PWD/hdf5"
+
+if [-d "$EIGEN_SOURCE" ]; then
+rm -rf "$EIGEN_SOURCE"
+fi
+
+if [-d "$GLOG_SOURCE" ]; then
+rm -rf "$GLOG_SOURCE"
+fi
+
+if [-d "$CERES_SOURCE" ]; then
+rm -rf "$CERES_SOURCE"
+fi
+
+if [-d "$OPENCV_SOURCE" ]; then
+rm -rf "$OPENCV_SOURCE"
+fi
+
+if [-d "$HDF5_SOURCE" ]; then
+rm -rf "$HDF5_SOURCE"
+fi
