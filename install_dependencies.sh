@@ -140,11 +140,54 @@ git submodule deinit -f "$OPENCV_SOURCE"
 git submodule deinit -f "$HDF5_SOURCE"
 
 # In case the deinit command didn't cleared the submodule's folder
-rm -r "$EIGEN_SOURCE/*"
-rm -r "$GLOG_SOURCE/*"
-rm -r "$CERES_SOURCE/*"
-rm -r "$OPENCV_SOURCE/*"
-rm -r "$HDF5_SOURCE/*"
 
+EIGEN_SOURCE="./dependencies/eigen"
+GLOG_SOURCE="./dependencies/glog"
+CERES_SOURCE="./dependencies/ceres-solver"
+OPENCV_SOURCE="./dependencies/opencv"
+HDF5_SOURCE="./dependencies/hdf5"
 
+if [ -z "$(ls -A $EIGEN_SOURCE)" ]; then
+    echo "Empty"
+else
+    pushd "$EIGEN_SOURCE"
+    rm -r *
+    rm -r *
+    popd
+fi
 
+if [ -z "$(ls -A $GLOG_SOURCE)" ]; then
+    echo "Empty"
+else
+    pushd "$GLOG_SOURCE"
+    rm -r *
+    rm -r *
+    popd
+fi
+
+if [ -z "$(ls -A $CERES_SOURCE)" ]; then
+    echo "Empty"
+else
+    pushd "$CERES_SOURCE"
+    rm -r *
+    rm -r *
+    popd
+fi
+
+if [ -z "$(ls -A $OPENCV_SOURCE)" ]; then
+    echo "Empty"
+else
+    pushd "$OPENCV_SOURCE"
+    rm -r *
+    rm -r *
+    popd
+fi
+
+if [ -z "$(ls -A $HDF5_SOURCE)" ]; then
+    echo "Empty"
+else
+    pushd "$HDF5_SOURCE"
+    rm -r *
+    rm -r *
+    popd
+fi
