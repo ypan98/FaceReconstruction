@@ -1,9 +1,9 @@
 #include<iostream>
-#include"hdf5.h"
-#include <opencv2/opencv.hpp>
-#include<ceres/solver.h>
-#include<Eigen/Core>
 
+#include "FaceModel.h"
+#include "DataHandler.h"
+#include "Optimizer.h"
+#include "landmark.h"
 using namespace std;
 
 int imgOption = -1;
@@ -22,7 +22,11 @@ void handleMenu() {
 	}
 }
 
-int main() {
+void rasterizer() {
+	
+}
+
+void main() {
 	handleMenu();
 	return 0;
 }
