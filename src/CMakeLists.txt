@@ -35,14 +35,11 @@ if (MSVC)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /bigobj")
 endif()
 
-set(HEADER_FILES 
-    landmark.h
-)
-set(SOURCE_FILES 
+file(GLOB SOURCE_FILES
+     "*.h"
+     "*.cpp"
 )
 
-message(STATUS "${Ceres_LIB_DIR}")
-
-add_executable(face_reconstruction main.cpp ${HEADER_FILES} ${SOURCE_FILES})
+add_executable(face_reconstruction main.cpp ${SOURCE_FILES})
 target_link_libraries(face_reconstruction ${CERES_LIBRARIES} ${OpenCV_LIBS} ${HDF5_LIBRARIES})
 target_include_directories(face_reconstruction PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${Eigen3_INCLUDE_DIR} ${glog_INCLUDE_DIR} ${Ceres_INCLUDE_DIR}  ${OpenCV_INCLUDE_DIRS} ${HDF5_INCLUDE_DIR})
