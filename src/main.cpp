@@ -1,4 +1,9 @@
 #include<iostream>
+
+#include "FaceModel.h"
+#include "DataHandler.h"
+#include "Optimizer.h"
+#include "landmark.h"
 using namespace std;
 
 int imgOption = -1;
@@ -15,6 +20,10 @@ void handleMenu() {
 		if (taskOption == 1 || taskOption == 2) break;
 		else cout << "Enter a valid option\n";
 	}
+}
+
+void rasterizer() {
+	
 }
 
 void main() {
