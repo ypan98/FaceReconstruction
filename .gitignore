@@ -32,6 +32,6 @@
 *.app
 
 # IDE
-/.vs/*
-/.idea/
+.vs/
+.idea/
 
