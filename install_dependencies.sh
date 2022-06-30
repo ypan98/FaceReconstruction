@@ -35,11 +35,10 @@ COMMON_CMAKE_ARGS=(
 )
 
 # Explicitly synchronize the submodules in case they are not pulled to local yet.
-git submodule sync --recursive
 git submodule update --init --recursive
 
 ########### Installing the eigen library ###########
-EIGEN_LIB="$PWD/../libs/eigen"
+EIGEN_LIB="$PWD/libs/eigen"
 EIGEN_BUILD="$PWD/eigen/build"
 
 if [ ! -d "$EIGEN_LIB" ]; then
@@ -55,7 +54,7 @@ popd
 fi
 
 ########### Installing the glog library ###########
-GLOG_LIB="$PWD/../libs/glog"
+GLOG_LIB="$PWD/libs/glog"
 GLOG_BUILD="$PWD/glog/build"
 
 if [ ! -d "$GLOG_LIB" ]; then
@@ -73,7 +72,7 @@ fi
 
 ########### Installing the ceres library ###########
 # Important: glog is a dependency of ceres
-CERES_LIB="$PWD/../libs/ceres"
+CERES_LIB="$PWD/libs/ceres"
 CERES_BUILD="$PWD/ceres-solver/build_dir"
 
 if [ ! -d "$CERES_LIB" ]; then
@@ -92,7 +91,7 @@ popd
 fi
 
 ########### Installing the opencv library ###########
-OPENCV_LIB="$PWD/../libs/opencv"
+OPENCV_LIB="$PWD/libs/opencv"
 OPENCV_BUILD="$PWD/opencv/build"
 
 if [ ! -d "$OPENCV_LIB" ]; then
@@ -111,7 +110,7 @@ popd
 fi
 
 ########### Installing the hdf5 library ###########
-HDF5_LIB="$PWD/../libs/hdf5"
+HDF5_LIB="$PWD/libs/hdf5"
 HDF5_BUILD="$PWD/hdf5/build"
 
 if [ ! -d "$HDF5_LIB" ]; then
@@ -128,28 +127,10 @@ popd
 fi
 
 ############ Delete the source and the build files of the dependencies ##############
-EIGEN_SOURCE="$PWD/eigen"
-GLOG_SOURCE="$PWD/glog"
-CERES_SOURCE="$PWD/ceres-solver"
-OPENCV_SOURCE="$PWD/opencv"
-HDF5_SOURCE="$PWD/hdf5"
+EIGEN_SOURCE="$PWD/libs/eigen"
+GLOG_SOURCE="$PWD/libs/glog"
+CERES_SOURCE="$PWD/libs/ceres-solver"
+OPENCV_SOURCE="$PWD/libs/opencv"
+HDF5_SOURCE="$PWD/libs/hdf5"
 
-if [-d "$EIGEN_SOURCE" ]; then
-rm -rf "$EIGEN_SOURCE"
-fi
 
-if [-d "$GLOG_SOURCE" ]; then
-rm -rf "$GLOG_SOURCE"
-fi
-
-if [-d "$CERES_SOURCE" ]; then
-rm -rf "$CERES_SOURCE"
-fi
-
-if [-d "$OPENCV_SOURCE" ]; then
-rm -rf "$OPENCV_SOURCE"
-fi
-
-if [-d "$HDF5_SOURCE" ]; then
-rm -rf "$HDF5_SOURCE"
-fi
