@@ -1,4 +1,9 @@
 #include<iostream>
+#include"hdf5.h"
+#include <opencv2/opencv.hpp>
+#include<ceres/solver.h>
+#include<Eigen/Core>
+
 using namespace std;
 
 int imgOption = -1;
@@ -17,6 +22,7 @@ void handleMenu() {
 	}
 }
 
-void main() {
+int main() {
 	handleMenu();
+	return 0;
 }
