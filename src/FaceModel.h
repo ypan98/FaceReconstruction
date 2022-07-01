@@ -1,36 +1,37 @@
 #pragma once
+#include "Eigen.h"
+#include "DataHandler.h"
 
-#include "Image.h"
-
-struct Vertex
-{
-	// position stored as 4 floats (4th component is supposed to be 1.0)
-	Vector4f position;
-	// color stored as 4 unsigned char
-	Vector4uc color;
-};
-
+// Class for a face model
 class FaceModel{
 
-//functions go here
 public:
-    //load data functions
-    //3D to 2D projection functions
+	FaceModel(std::string _faceModel = "BFM17") {
+		// TODO: call DataHandler functions to load and initialize class attributes
+	}
 
+	unsigned int getNumVertices() {
+		return idMean.rows();
+	}
 
+	unsigned int getAlphaSize() {
+		return idBasis.cols();
+	}
+
+	unsigned int getBetaSize() {
+		return expBasis.cols();
+	}
+
+	unsigned int getGammaSize() {
+		return albBasis.cols();
+	}
 
 private:
-  //optimized parameters alpha, beta, gama
-  Eigen::Vector3d alpha;
-  Eigen::Vector3d beta;
-  Eigen::Vector3d gama;
-  //basis, mean
-  Eigen::Vector3d mean;
-  Eigen::Vector3d basis;
-  //intrinsics and extrinsice matrix(should be given by camera manufacturer)
-  Eigen::Matrix3f depthIntrinsics;
-  Eigen::Matrix4f depthExtrinsics;
-  //landmarks
-  std::vector<double> landmark;
-
+  
+  // Mean of the eigenvectors in the basis. Shape = 3*num_vertices (each vertex is a 3D point)
+  VectorXf idMean, albMean, expMean;
+  // Basis formed by the eigvectors. Shape = [3*num_vectices, basis_size]
+  MatrixXf idBasis, albBasis, expBasis;
+  // triangulation of the vertices. Shape = [num_faces, 3]
+  MatrixX3i triangulation;
 };

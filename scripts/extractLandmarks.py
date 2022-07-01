@@ -12,8 +12,8 @@ import torch
 
 isImage = True
 sampleName = "sample1"
-itemPath = "../samples/rgb/" + sampleName + ".bmp"
-landmarkOutputPath = "../samples/landmark/" + sampleName + ".txt"
+itemPath = "../data/samples/rgb/" + sampleName + ".jpeg"
+landmarkOutputPath = "../data/samples/landmark/" + sampleName + ".txt"
 
 
 # load model

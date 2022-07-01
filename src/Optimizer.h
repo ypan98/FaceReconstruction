@@ -1,15 +1,17 @@
-#include "FaceModel.h"
+#pragma once
+#include "Face.h"
 
-class Optimizer{
+class Optimizer {
 
 public:
-    //energy function
-    //point-to-point
-    //point-to-plane
+    // maybe add some options later when we are done with the basic version. Like GN/LM, Cuda/Cpu....
+    Optimizer() {
+    }
+    // optimize for the parameters
+    void optimize(Face& face) {
+
+    }
 
 private:
-  //optimized parameters alpha, beta, gama
-  Eigen::Vector3d alpha;
-  Eigen::Vector3d beta;
-  Eigen::Vector3d gama;
-}
+    // other functions needed for the optimization....
+};

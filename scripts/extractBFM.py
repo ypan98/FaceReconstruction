@@ -6,7 +6,7 @@ This dataset can be downloaded from https://faces.dmi.unibas.ch/bfm/
 import numpy as np
 import h5py
 
-pathToDataset = "../data/faceModels/BFM2017/"
+pathToDataset = "../data/BFM2017/"
 path = pathToDataset + "model2017-1_face12_nomouth.h5"
 
 with h5py.File(path, 'r') as f:
