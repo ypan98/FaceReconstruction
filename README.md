@@ -16,16 +16,44 @@ source ~/.bashrc && echo $PATH
 2. Set your current working dictory to the root folder of this project, run the following code and do not close the terminal until the installation
 is done.
 ```
-dos2unix install_dependencies.sh
-sudo bash install_dependencies.sh
+dos2unix install_dependencies_linux.sh
+sudo bash install_dependencies_linux.sh
 ```
 
 ### For Windows Users
+#### If you'd like to run this project with Visual Studio Code
+1. Make sure you have Git Bash installed in your computer.
+2. Open Git Bash
+3. Set your current working dictory to the root folder of this project
+4. Find your Visual Studio Code Generator's version. For example, "Visual Studio 16 2019"
+5. Run the following code with the right Visual Studio version found in the previous step
+```
+./install_dependencies_win.sh "Visual Studio 16 2019"
+```
+#### If you'd like to run this project under WSL
 1. Install the Ubutu 20.04.4 LTS wsl from Microsoft Store. (You will have to reboot your system in order to finish the installation process)
 2. Open Windows PowerShell and activate the WSL using the following command
-
 ```
 wsl
 ```
 3. Once you have activated wsl switch the current working directory to the root folder of this project and follow the same process described 
 for ubuntu users. (hint: to switch to disk C for example you can use cd /mnt/c/)
+
+## Build the project
+### For Visual Studio Code users
+It should be trivial for you :)
+### For WSL and Linux-system users
+1. Go to the **src** folder
+2. Create **build** folder with command
+```
+mkdir build
+```
+3. Go to the created **build** folder
+```
+cd build
+```
+4. Compile and build the project (you can also build this project in debug mode, just need to replace **Release** by **Debug**)
+```
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j8
+```
