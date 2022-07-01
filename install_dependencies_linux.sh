@@ -5,17 +5,6 @@ PWD=$(pwd)
 set -x
 set -e
 
-GCC=gcc
-GXX=g++
-
-# The default build type is set to RelWithDebInfo, but we can change it later by
-# providing an extra argument
-BUILD_TYPE=RelWithDebInfo
-
-if [ -n "$1" ]; then
-BUILD_TYPE=$1
-fi
-
 # Get the number of cores which will be later used for configuring the compiling setting
 NUM_CORES=`getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu || echo 1`
 
@@ -23,16 +12,6 @@ NUM_PARALLEL_BUILDS=$((NUM_CORES - 2 < 1 ? 1 : NUM_CORES - 2))
 
 # Set the default cmake params
 CXX_MARCH=native
-
-COMMON_CMAKE_ARGS=(
-    -DCMAKE_C_COMPILER=${GCC}
-    -DCMAKE_CXX_COMPILER=${GXX}
-    -DCMAKE_C_COMPILER_LAUNCHER=ccache
-    -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-    -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
-    -DCMAKE_EXPORT_NO_PACKAGE_REGISTRY=ON
-    -DCMAKE_CXX_FLAGS="-march=$CXX_MARCH -O3 -Wno-deprecated-declarations -Wno-null-pointer-arithmetic -Wno-unknown-warning-option -Wno-unused-function"
-)
 
 # Explicitly synchronize the submodules in case they are not pulled to local yet.
 git submodule update --init --recursive
@@ -46,26 +25,38 @@ mkdir -p "$EIGEN_BUILD"
 mkdir -p "$EIGEN_LIB"
 
 pushd "$EIGEN_BUILD"
-cmake .. "${COMMON_CMAKE_ARGS[@]}" \
+cmake .. "${CMAKE_GENERATOR_OPTIONS[@]}" \
 -DCMAKE_INSTALL_PREFIX="$EIGEN_LIB" \
 -DBUILD_TESTING=OFF
-make -j$NUM_PARALLEL_BUILDS install
+cmake --build . -j$NUM_PARALLEL_BUILDS --target install
 popd
 fi
 
 ########### Installing the glog library ###########
 GLOG_LIB="$PWD/libs/glog"
-GLOG_BUILD="$PWD/dependencies/glog/build"
+
+GLOG_BUILD_DEBUG="$PWD/dependencies/glog/build_debug"
+GLOG_BUILD_RELEASE="$PWD/dependencies/glog/build_release"
 
 if [ ! -d "$GLOG_LIB" ]; then
 mkdir -p "$GLOG_LIB"
-mkdir -p "$GLOG_BUILD"
+mkdir -p "$GLOG_BUILD_DEBUG"
+mkdir -p "$GLOG_BUILD_RELEASE"
 
-pushd "$GLOG_BUILD"
-cmake .. "${COMMON_CMAKE_ARGS[@]}" \
--DCMAKE_INSTALL_PREFIX="$GLOG_LIB" \
+
+pushd "$GLOG_BUILD_DEBUG"
+cmake .. -DCMAKE_INSTALL_PREFIX="$GLOG_LIB" \
 -DBUILD_TESTING=OFF \
--DWITH_GFLAGS=OFF
+-DWITH_GFLAGS=OFF \
+-DCMAKE_BUILD_TYPE=DEBUG
+make -j$NUM_PARALLEL_BUILDS install
+popd
+
+pushd "$GLOG_BUILD_RELEASE"
+cmake .. -DCMAKE_INSTALL_PREFIX="$GLOG_LIB" \
+-DBUILD_TESTING=OFF \
+-DWITH_GFLAGS=OFF \
+-DCMAKE_BUILD_TYPE=RELEASE
 make -j$NUM_PARALLEL_BUILDS install
 popd
 fi
@@ -73,53 +64,102 @@ fi
 ########### Installing the ceres library ###########
 # Important: glog is a dependency of ceres
 CERES_LIB="$PWD/libs/ceres"
-CERES_BUILD="$PWD/dependencies/ceres-solver/build_dir"
+
+CERES_BUILD_DEBUG="$PWD/dependencies/ceres-solver/build_debug"
+CERES_BUILD_RELEASE="$PWD/dependencies/ceres-solver/build_release"
 
 if [ ! -d "$CERES_LIB" ]; then
 mkdir -p "$CERES_LIB"
-mkdir -p "$CERES_BUILD"
+mkdir -p "$CERES_BUILD_DEBUG"
+mkdir -p "$CERES_BUILD_RELEASE"
 
-pushd "$CERES_BUILD"
-cmake .. "${COMMON_CMAKE_ARGS[@]}" \
--DCMAKE_INSTALL_PREFIX="$CERES_LIB" \
+pushd "$CERES_BUILD_DEBUG"
+cmake .. -DCMAKE_INSTALL_PREFIX="$CERES_LIB" \
 -DBUILD_TESTING=OFF \
 -DBUILD_EXAMPLES=OFF \
--Dglog_DIR="$GLOG_LIB/lib/cmake/glog" \
--DEigen3_DIR="$EIGEN_LIB/share/eigen3/cmake"
+-Dglog_DIR="$GLOG_LIB_DEBUG/lib/cmake/glog" \
+-DEigen3_DIR="$EIGEN_LIB/share/eigen3/cmake" \
+-DCMAKE_BUILD_TYPE=DEBUG
+make -j$NUM_PARALLEL_BUILDS install
+popd
+
+pushd "$CERES_BUILD_RELEASE"
+cmake .. -DCMAKE_INSTALL_PREFIX="$CERES_LIB" \
+-DBUILD_TESTING=OFF \
+-DBUILD_EXAMPLES=OFF \
+-Dglog_DIR="$GLOG_LIB_RELEASE/lib/cmake/glog" \
+-DEigen3_DIR="$EIGEN_LIB/share/eigen3/cmake" \
+-DCMAKE_BUILD_TYPE=RELEASE
+
 make -j$NUM_PARALLEL_BUILDS install
 popd
 fi
 
 ########### Installing the opencv library ###########
 OPENCV_LIB="$PWD/libs/opencv"
-OPENCV_BUILD="$PWD/dependencies/opencv/build"
+OPENCV_BUILD_DEBUG="$PWD/dependencies/opencv/build_debug"
+OPENCV_BUILD_RELEASE="$PWD/dependencies/opencv/build_release"
 
 if [ ! -d "$OPENCV_LIB" ]; then
 mkdir -p "$OPENCV_LIB"
-mkdir -p "$OPENCV_BUILD"
+mkdir -p "$OPENCV_BUILD_DEBUG"
+mkdir -p "$OPENCV_BUILD_RELEASE"
 
-pushd "$OPENCV_BUILD"
-cmake .. "${COMMON_CMAKE_ARGS[@]}" \
--DCMAKE_INSTALL_PREFIX="$OPENCV_LIB" \
+pushd "$OPENCV_BUILD_DEBUG"
+cmake .. -DCMAKE_INSTALL_PREFIX="$OPENCV_LIB" \
 -DBUILD_TESTS=OFF \
 -DBUILD_PERF_TESTS=OFF \
 -DBUILD_EXAMPLES=OFF \
--DBUILD_opencv_apps=OFF
+-DBUILD_DOCS=OFF \
+-DWITH_CUDA=OFF \
+-DBUILD_opencv_apps=OFF \
+-DBUILD_opencv_gapi=OFF \
+-DBUILD_opencv_dnn=OFF \
+-DBUILD_opencv_java=OFF \
+-DBUILD_opencv_python2=OFF \
+-DBUILD_opencv_python3=OFF \
+-DCMAKE_BUILD_TYPE=DEBUG
+make -j$NUM_PARALLEL_BUILDS install
+popd
+
+pushd "$OPENCV_BUILD_RELEASE"
+cmake .. -DCMAKE_INSTALL_PREFIX="$OPENCV_LIB" \
+-DBUILD_TESTS=OFF \
+-DBUILD_PERF_TESTS=OFF \
+-DBUILD_EXAMPLES=OFF \
+-DBUILD_DOCS=OFF \
+-DWITH_CUDA=OFF \
+-DBUILD_opencv_apps=OFF \
+-DBUILD_opencv_gapi=OFF \
+-DBUILD_opencv_dnn=OFF \
+-DBUILD_opencv_java=OFF \
+-DBUILD_opencv_python2=OFF \
+-DBUILD_opencv_python3=OFF \
+-DCMAKE_BUILD_TYPE=RELEASE
+
 make -j$NUM_PARALLEL_BUILDS install
 popd
 fi
 
 ########### Installing the hdf5 library ###########
 HDF5_LIB="$PWD/libs/hdf5"
-HDF5_BUILD="$PWD/dependencies/hdf5/build"
+HDF5_BUILD_DEBUG="$PWD/dependencies/hdf5/build_debug"
+HDF5_BUILD_RELEASE="$PWD/dependencies/hdf5/build_release"
 
 if [ ! -d "$HDF5_LIB" ]; then
 mkdir -p "$HDF5_LIB"
-mkdir -p "$HDF5_BUILD"
+mkdir -p "$HDF5_BUILD_DEBUG"
+mkdir -p "$HDF5_BUILD_RELEASE"
 
-pushd "$HDF5_BUILD"
-cmake .. "${COMMON_CMAKE_ARGS[@]}" \
--DCMAKE_INSTALL_PREFIX="$HDF5_LIB" \
+pushd "$HDF5_BUILD_DEBUG"
+cmake .. -DCMAKE_INSTALL_PREFIX="$HDF5_LIB_DEBUG" \
+-DBUILD_TESTING=OFF \
+-DBUILD_EXAMPLES=OFF
+make -j$NUM_PARALLEL_BUILDS install
+popd
+
+pushd "$HDF5_BUILD_RELEASE"
+cmake .. -DCMAKE_INSTALL_PREFIX="$HDF5_LIB_RELEASE" \
 -DBUILD_TESTING=OFF \
 -DBUILD_EXAMPLES=OFF
 make -j$NUM_PARALLEL_BUILDS install
