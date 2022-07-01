@@ -1,40 +1,75 @@
-#include "FaceModel.h"
+#pragma once
 
-class DataHandler{
+#include <fstream>
+#include "Eigen.h"
+#include <opencv2/opencv.hpp>
+#include <opencv2/core/eigen.hpp>
+#include <vector>
+#include "Utils.h"
+
+// Full paths
+std::string PATH_TO_LANDMARK_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/landmark/");
+std::string PATH_TO_RGB_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/rgb/");
+std::string PATH_TO_DEPTH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/depth/");
+
+unsigned int NUM_LANDMARKS = 68; // num of landmark points
+unsigned int LANDMARK_DIM = 2; // each landmark is a 2D point
+
+class DataHandler {
 public:
-    bool ReadFileList(const std::string& filename, std::vector<std::string>& result)
-	{
-		
-    }
-    bool Init(const std::string& datasetDir)
-	{
-		baseDir = "../data/samples";
+	// read the precomputed landmarks from the file 
+	static void loadLandmarks(std::string fileName, MatrixX2f& landmarks) {
 
-		// read depth and rgb filename lists
-		//if (!ReadFileList(baseDir + "depth" + "", DepthImages)) return false;
-		//if (!ReadFileList(datasetDir + "rgb" + "", ColorImages)) return false;
-
-		// image resolutions
-		ImageWidth = 250;
-		ImageHeight = 250;
-	
-		depthFrame = new float[ImageWidth*ImageHeight];
-		for (unsigned int i = 0; i < ImageWidth*ImageHeight; ++i) depthFrame[i] = 0.5f;
-
-		colorFrame = new BYTE[4* ImageWidth*ImageHeight];
-		for (unsigned int i = 0; i < 4*ImageWidth*ImageHeight; ++i) colorFrame[i] = 255;
-
-		currentIdx = -1;
-		return true;
+		landmarks = MatrixXf(NUM_LANDMARKS, LANDMARK_DIM);
+		std::string pathToFile = PATH_TO_LANDMARK_DIR + fileName + ".txt";
+		std::ifstream f(pathToFile);
+		if (!f.is_open())
+			std::cerr << "failed to open: " << pathToFile << std::endl;
+		for (unsigned int i = 0; i < NUM_LANDMARKS; i++) {
+			for (unsigned int j = 0; j < LANDMARK_DIM; j++) {
+				f >> landmarks(i, j);
+			}
+		}
 	}
+	// read rgb value of the pixels from the image
+	static void loadRGB(std::string fileName, std::vector<MatrixXf>& rgb) {
+		std::string pathToFile = PATH_TO_RGB_DIR + fileName + ".jpeg";
+		try
+		{
+			cv::Mat image = cv::imread(pathToFile, cv::IMREAD_COLOR);
+			cv::Mat rgbMat[3];
+			split(image, rgbMat);	//split source
+			MatrixXf r, g, b;
+			cv::cv2eigen(rgbMat[0], r);
+			rgb[0] = r;
+			cv::cv2eigen(rgbMat[1], g);
+			rgb[1] = g;
+			cv::cv2eigen(rgbMat[2], b);
+			rgb[2] = b;
+		}
+		catch (cv::Exception& e)
+		{
+			std::cout << "cv2 exception reading: " << pathToFile << std::endl;
+			std::cout << e.what() << std::endl;
+		}
+	}
+	// read the depth map of the image
+	static void loadDepthMap(std::string fileName, MatrixXf& depthMap) {
+		std::string pathToFile = PATH_TO_DEPTH_DIR + fileName + ".jpeg";
+		try
+		{
+			cv::Mat image = cv::imread(pathToFile, cv::IMREAD_GRAYSCALE);
+			cv::cv2eigen(image, depthMap);
+		}
+		catch (cv::Exception& e)
+		{
+			std::cout << "cv2 exception reading: " << pathToFile << std::endl;
+			std::cout << e.what() << std::endl;
+		}
+	}
+};
 	
 
-private:
-    // base dir
-	std::string m_baseDir;
-	// filenamelist depth
-	std::vector<std::string> DepthImages;
-	// filenamelist color
-	std::vector<std::string> ColorImages;
 
-}
+
+

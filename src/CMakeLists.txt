@@ -36,7 +36,7 @@ endif()
 
 
 # Set C++ flags
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 find_package(glog REQUIRED)
 find_package(Ceres REQUIRED)
