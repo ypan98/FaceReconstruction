@@ -19,7 +19,7 @@ public:
 	}
 
 	unsigned int getNumVertices() {
-		return shapeBasis.rows();
+		return shapeBasis.rows()/3;
 	}
 
 	unsigned int getAlphaSize() {

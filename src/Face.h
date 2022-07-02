@@ -18,7 +18,8 @@ public:
 
 	// Calls DataHandler to write the recontructed mesh in .obj format
 	void writeReconstructedFace() {
-
+		Mesh mesh = toMesh();
+		DataHandler::writeMesh(mesh, image.getFileName());
 	}
 	
 	// Transfer the expression from the source face to the current face
@@ -35,11 +36,10 @@ public:
 
 	// construct the mesh with alpha, beta, gamma and face model variables
 	Mesh toMesh() {
-		Mesh mesh = {
-			calculateVertices(),
-			calculateColors(),
-			faceModel.getTriangulation()
-		};
+		Mesh mesh;
+		mesh.vertices = calculateVertices();
+		mesh.colors = calculateColors();
+		mesh.faces = faceModel.getTriangulation();
 		return mesh;
 	}
 
@@ -92,11 +92,15 @@ private:
 
 	// geometry
 	MatrixX3f calculateVertices() {
-		return faceModel.getShapeMean() + alpha * faceModel.getShapeBasis();
+		MatrixXf vertices = faceModel.getShapeMean() + faceModel.getShapeBasis() * alpha;
+		vertices.resize(faceModel.getNumVertices(), 3);
+		return vertices;
 	}
 	// color
-	Matrix3f calculateColors() {
-		return faceModel.getColorMean() + beta * faceModel.getColorBasis();
+	MatrixX3f calculateColors() {
+		MatrixXf colors = faceModel.getColorMean() + faceModel.getColorBasis() * beta;
+		colors.resize(faceModel.getNumVertices(), 3);
+		return colors;
 	}
 
 };
