@@ -11,7 +11,7 @@ import numpy as np
 import torch
 
 isImage = True
-sampleName = "sample1"
+sampleName = "sample2"
 itemPath = "../data/samples/rgb/" + sampleName + ".jpeg"
 landmarkOutputPath = "../data/samples/landmark/" + sampleName + ".txt"
 

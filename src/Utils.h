@@ -2,6 +2,8 @@
 #include <iostream>
 #include <algorithm>
 #include <filesystem>
+#include <hdf5.h>
+
 
 namespace fs = std::filesystem;
 
@@ -23,9 +25,11 @@ struct Vertex
 struct Mesh
 {
 	// vertices of the mesh
-	std::vector<Vertex> vertices;
+	MatrixX3f vertices;
+	// color of the vertices
+	MatrixX3f colors;
 	// triangulation
-	std::vector<Vector3i> triangles;
+	MatrixX3i faces;
 };
 
 // replaces the given path with / -> \\ for Windows and viceversa for Unix
@@ -43,4 +47,15 @@ std::string get_full_path_to_project_root_dir() {
 // tells if the current operating system is windows
 bool isWindows() {
 	return OS_WINDOWS == 1;
+}
+
+// get shape of the h5 dataset, we assume it has at most dim=2
+std::vector<unsigned int> get_h5_dataset_shape(hid_t h5d) {
+	std::vector<unsigned int> shape(2, 0);
+	hid_t dspace_id = H5Dget_space(h5d);
+	hsize_t dims[2];
+	H5Sget_simple_extent_dims(dspace_id, dims, NULL);
+	shape[0] = dims[0];
+	shape[1] = dims[1];
+	return shape;
 }

@@ -6,6 +6,7 @@
 #include <opencv2/core/eigen.hpp>
 #include <vector>
 #include "Utils.h"
+#include <map>
 
 // Full paths
 std::string PATH_TO_LANDMARK_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/landmark/");
@@ -13,6 +14,24 @@ std::string PATH_TO_RGB_DIR = convert_path(get_full_path_to_project_root_dir() +
 std::string PATH_TO_DEPTH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/depth/");
 std::string PATH_TO_MESH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/outputMesh/");
 
+std::string PATH_TO_FACE_MODEL = convert_path(get_full_path_to_project_root_dir() + "/data/");
+std::map<std::string, std::string> FACE_MODEL_TO_DIR_MAP = {
+	{ "BFM17", convert_path(get_full_path_to_project_root_dir() + "/data/BFM17.h5")}
+};
+// Path inside H5 file
+std::map<std::pair<std::string, std::string>, std::string> H5_PATH_MAP = {
+	// BFM 2017
+	{ std::make_pair("shape", "triangulation"), "/shape/representer/cells"},	// Triangulation (identical for shape/expr/color)
+	{ std::make_pair("shape", "basis"), "/shape/model/pcaBasis"},
+	{ std::make_pair("shape", "mean"), "/shape/model/mean"},
+	{ std::make_pair("shape", "variance"), "/shape/model/pcaVariance"},
+	{ std::make_pair("expression", "basis"), "/expression/model/pcaBasis"},
+	{ std::make_pair("expression", "mean"), "/expression/model/mean"},
+	{ std::make_pair("expression", "variance"), "/expression/model/pcaVariance"},
+	{ std::make_pair("color", "basis"), "/color/model/pcaBasis"},
+	{ std::make_pair("color", "variance"), "/color/model/pcaVariance"},
+	{ std::make_pair("color", "mean"), "/color/model/mean"},
+};
 
 unsigned int NUM_LANDMARKS = 68; // num of landmark points
 unsigned int LANDMARK_DIM = 2; // each landmark is a 2D point
@@ -51,8 +70,8 @@ public:
 		}
 		catch (cv::Exception& e)
 		{
-			std::cout << "cv2 exception reading: " << pathToFile << std::endl;
-			std::cout << e.what() << std::endl;
+			std::cerr << "cv2 exception reading: " << pathToFile << std::endl;
+			std::cerr << e.what() << std::endl;
 		}
 	}
 	// read the depth map of the image
@@ -65,9 +84,34 @@ public:
 		}
 		catch (cv::Exception& e)
 		{
-			std::cout << "cv2 exception reading: " << pathToFile << std::endl;
-			std::cout << e.what() << std::endl;
+			std::cerr << "cv2 exception reading: " << pathToFile << std::endl;
+			std::cerr << e.what() << std::endl;
 		}
+	}
+	// read basis from hdf5 file
+	static void readBasis(std::string faceModelName, std::string basisName, MatrixXf& basis) {
+		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP[faceModelName].c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP[std::make_pair(basisName, "basis")].c_str(), H5P_DEFAULT);
+		if (h5d < 0) std::cerr << "Error reading basis from: " << faceModelName << std::endl;
+		else {
+			std::vector<unsigned int> shape = get_h5_dataset_shape(h5d);
+			basis = MatrixXf(shape[0], shape[1]);
+			H5Dread(h5d, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &basis(0));
+		}
+		H5Dclose(h5d);
+		H5Fclose(h5file);
+	}
+	// read mean from hdf5 file
+	static void readMean(std::string faceModelName, std::string meanName, VectorXf& mean) {
+		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP[faceModelName].c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP[std::make_pair(meanName, "mean")].c_str(), H5P_DEFAULT);
+		if (h5d < 0) std::cerr << "Error reading mean from: " << faceModelName << std::endl;
+		else {
+			mean = VectorXf(get_h5_dataset_shape(h5d)[0]);
+			H5Dread(h5d, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &mean(0));
+		}
+		H5Dclose(h5d);
+		H5Fclose(h5file);
 	}
 	bool writeMesh(const Mesh& mesh, const std::string& filename){
 		std::string pathToFile = PATH_TO_MESH_DIR + filename + ".off";
@@ -115,6 +159,33 @@ public:
 			outFile << 3 << " " << mesh.triangles.row(i) << std::endl;
 		}	
 	}
+	// read variance from hdf5 file
+	static void readVariance(std::string faceModelName, std::string varianceName, VectorXf& variance) {
+		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP[faceModelName].c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP[std::make_pair(varianceName, "variance")].c_str(), H5P_DEFAULT);
+		if (h5d < 0) std::cerr << "Error reading variance from: " << faceModelName << std::endl;
+		else {
+			variance = VectorXf(get_h5_dataset_shape(h5d)[0]);
+			H5Dread(h5d, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &variance(0));
+		}
+		H5Dclose(h5d);
+		H5Fclose(h5file);
+	}
+	// read triangulation from hdf5 file
+	static void readTriangulation(std::string faceModelName, MatrixX3i& triangulation) {
+		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP[faceModelName].c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP[std::make_pair("shape", "triangulation")].c_str(), H5P_DEFAULT);
+		if (h5d < 0) std::cerr << "Error reading triangulation from: " << faceModelName << std::endl;
+		else {
+			std::vector<unsigned int> shape = get_h5_dataset_shape(h5d);
+			Matrix3Xi aux(shape[0], shape[1]);
+			H5Dread(h5d, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &aux(0));
+			triangulation = aux.transpose();
+		}
+		H5Dclose(h5d);
+		H5Fclose(h5file);
+	}
+
 };
 	
 

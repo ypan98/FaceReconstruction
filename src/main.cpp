@@ -1,5 +1,4 @@
 #include<iostream>
-#include "DataHandler.h"
 #include "Optimizer.h"
 #include "Face.h"
 
@@ -27,36 +26,39 @@ void handleMenu() {
 	}*/
 }
 
+void performTask() {
+	Optimizer optimizer;
+	switch (taskOption) {
+	case 1:
+	{
+		// reconstruct face
+		Face sourceFace = Face("sample1", "BFM17");
+		optimizer.optimize(sourceFace);
+		// write out mesh
+		sourceFace.writeReconstructedFace();
+		break;
+	}
+	case 2:
+	{
+		// reconstruct source face
+		Face sourceFace = Face("sample1", "BFM17");
+		optimizer.optimize(sourceFace);
+		// reconstruct target face
+		Face targetFace = Face("sample2", "BFM17");
+		optimizer.optimize(targetFace);
+		// transfer expression and write out mesh
+		targetFace.transferExpression(sourceFace);
+		targetFace.writeReconstructedFace();
+		break;
+	}
+	default:
+		break;
+	}
+}
+
 
 int main() {
 	handleMenu();
-	Optimizer optimizer;
-	switch (taskOption) {
-		case 1:
-		{
-			// reconstruct face
-			Face sourceFace = Face("sample1", "BFM17");
-			optimizer.optimize(sourceFace);
-			// write out mesh
-			sourceFace.writeReconstructedFace();
-			break;
-		}
-		case 2:
-		{
-			// reconstruct source face
-			Face sourceFace = Face("sample1", "BFM17");
-			optimizer.optimize(sourceFace);
-			// reconstruct target face
-			Face targetFace = Face("sample2", "BFM17");
-			optimizer.optimize(targetFace);
-			// transfer expression and write out mesh
-			targetFace.transferExpression(sourceFace);
-			targetFace.writeReconstructedFace();
-			break;
-		}
-		default:
-			break;
-	}
-
+	performTask();
 	return 0;
 }
