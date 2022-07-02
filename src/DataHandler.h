@@ -11,6 +11,8 @@
 std::string PATH_TO_LANDMARK_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/landmark/");
 std::string PATH_TO_RGB_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/rgb/");
 std::string PATH_TO_DEPTH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/depth/");
+std::string PATH_TO_MESH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/outputMesh/");
+
 
 unsigned int NUM_LANDMARKS = 68; // num of landmark points
 unsigned int LANDMARK_DIM = 2; // each landmark is a 2D point
@@ -66,6 +68,52 @@ public:
 			std::cout << "cv2 exception reading: " << pathToFile << std::endl;
 			std::cout << e.what() << std::endl;
 		}
+	}
+	bool writeMesh(const Mesh& mesh, const std::string& filename){
+		std::string pathToFile = PATH_TO_MESH_DIR + filename + ".off";
+	
+		//number of valid vertices
+		unsigned int nVertices = 0;
+		nVertices = mesh.vertices.rows() * mesh.vertices.cols();
+
+		//number of valid faces
+		unsigned nFaces = 0;
+		nFaces = mesh.triangles.rows(); 
+
+		// Write off file
+		std::ofstream outFile(pathToFile);
+		if (!outFile.is_open()) return false;
+
+		// write header
+		outFile << "COFF" << std::endl;
+
+		outFile << "# numVertices numFaces numEdges" << std::endl;
+
+		outFile << nVertices << " " << nFaces << " " << 0 << std::endl;
+
+		// save vertices
+		outFile << "# list of vertices" << std::endl;
+		outFile << "# X Y Z R G B A" << std::endl;
+		for(int i = 0; i < nVertices; ++i){
+			outFile << mesh.vertices.row(i) << " ";
+			for(int j = 0; j < 3; ++j){
+				if(mesh.colors(i, j) < 0)
+					outFile << "0";
+				if(mesh.colors(i, j) > 255)
+					outFile << "255";
+				else
+					outFile << mesh.colors(i, j);
+			}
+			outFile <<  "255" << std::endl;
+		}
+			
+		//save valid faces
+		outFile << "# list of faces" << std::endl;
+		outFile << "# nVerticesPerFace idx0 idx1 idx2 ..." << std::endl;
+		
+		for(int i = 0; i < nFaces; ++i){
+			outFile << 3 << " " << mesh.triangles.row(i) << std::endl;
+		}	
 	}
 };
 	
