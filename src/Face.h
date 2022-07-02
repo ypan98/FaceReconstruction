@@ -1,6 +1,7 @@
 #pragma once
 #include "Image.h"
 #include "FaceModel.h"
+#include "Utils.h"
 
 // Class for a reconstructed 3D face
 class Face {
@@ -25,9 +26,22 @@ public:
 
 	}
 
-	// Project to 2D using extrinsics and intrinsics
-	/*vector<MatrixXf> projectTo2D() {
-	}*/
+	// Randomize parameters (for testing purpose)
+	void randomizeParameters() {
+		alpha = VectorXf::Random(faceModel.getAlphaSize());
+		beta = VectorXf::Random(faceModel.getBetaSize());
+		gamma = VectorXf::Random(faceModel.getGammaSize());
+	}
+
+	// construct the mesh with alpha, beta, gamma and face model variables
+	Mesh toMesh() {
+		Mesh mesh = {
+			calculateVertices(),
+			calculateColors(),
+			faceModel.getTriangulation()
+		};
+		return mesh;
+	}
 
 	// getters and setters
 
@@ -74,5 +88,15 @@ private:
 	Matrix4f extrinsics;	// given by optimization
 	Image image;	// the corresponding image
 	FaceModel faceModel;	// the used face model, ie BFM17
+	MatrixX3f normals; // normal of the vertices
+
+	// geometry
+	MatrixX3f calculateVertices() {
+		return faceModel.getShapeMean() + alpha * faceModel.getShapeBasis();
+	}
+	// color
+	Matrix3f calculateColors() {
+		return faceModel.getColorMean() + beta * faceModel.getColorBasis();
+	}
 
 };

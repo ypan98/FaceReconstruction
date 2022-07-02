@@ -41,7 +41,7 @@ for ubuntu users. (hint: to switch to disk C for example you can use cd /mnt/c/)
 
 ## Build the project
 ### For Visual Studio Code users
-It should be trivial for you :)
+You have to copy all the .dll files of libraries glog, opencv and hdf5 to your executable's folder. After this you will be able build the target **face_reconstruction**.
 ### For WSL and Linux-system users
 1. Go to the **src** folder
 2. Create **build** folder with command
