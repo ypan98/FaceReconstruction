@@ -40,6 +40,11 @@ public:
 		return shapeMean;
 	}
 
+	// just for debug
+	void setShapeMean(VectorXf shape_mean) {
+		shapeMean = shape_mean;
+	}
+
 	VectorXf getColorMean() {
 		return colorMean;
 	}
@@ -74,6 +79,11 @@ public:
 
 	MatrixX3i getTriangulation() {
 		return triangulation;
+	}
+
+	// just for debug
+	void setTriangulation(MatrixX3i triangulation_) {
+		triangulation = triangulation_;
 	}
 
 private:

@@ -1,10 +1,11 @@
 #include<iostream>
 #include "Optimizer.h"
 #include "Face.h"
+#include "Render.h"
 
 using namespace std;
 
-vector<string> taskOptions{ "Face reconstruction", "Expression transfer" };
+vector<string> taskOptions{ "Face reconstruction", "Expression transfer", "Rasterize random face"};
 int taskOption = -1;
 // For now we only hadle sample images case
 // vector<string> inputOptions{ "Use sample image(s)" };
@@ -50,6 +51,19 @@ void performTask() {
 		// transfer expression and write out mesh
 		targetFace.transferExpression(sourceFace);
 		targetFace.writeReconstructedFace();
+		break;
+	}
+	case 3:
+	{
+		float scale_factor = 1/100.f;
+		FaceModel face_model = FaceModel("BFM17");
+		MatrixXf coords = face_model.getShapeMean().reshaped(3, face_model.getNumVertices()).transpose();
+		Vector3f mean = coords.colwise().mean();
+		Matrix4f projection_matrix = Matrix4f::Identity() * scale_factor;
+		projection_matrix.block(0, 3, 3, 1) = -mean * scale_factor;
+		projection_matrix(3, 3) = 1.f;
+		cv::Mat img = render(face_model, projection_matrix, 720, 720);
+		cv::imwrite("../../data/samples/2d face image/sample_image.png", img);
 		break;
 	}
 	default:
