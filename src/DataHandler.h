@@ -14,11 +14,10 @@ std::string PATH_TO_RGB_DIR = convert_path(get_full_path_to_project_root_dir() +
 std::string PATH_TO_DEPTH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/depth/");
 std::string PATH_TO_MESH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/outputMesh/");
 
-std::string PATH_TO_FACE_MODEL = convert_path(get_full_path_to_project_root_dir() + "/data/");
 std::map<std::string, std::string> FACE_MODEL_TO_DIR_MAP = {
 	{ "BFM17", convert_path(get_full_path_to_project_root_dir() + "/data/BFM17.h5")}
 };
-// Path inside H5 file
+// h5 hierarchy path
 std::map<std::pair<std::string, std::string>, std::string> H5_PATH_MAP = {
 	// BFM 2017
 	{ std::make_pair("shape", "triangulation"), "/shape/representer/cells"},	// Triangulation (identical for shape/expr/color)
@@ -100,6 +99,7 @@ public:
 		}
 		H5Dclose(h5d);
 		H5Fclose(h5file);
+
 	}
 	// read mean from hdf5 file
 	static void readMean(std::string faceModelName, std::string meanName, VectorXf& mean) {
@@ -132,9 +132,14 @@ public:
 		if (h5d < 0) std::cerr << "Error reading triangulation from: " << faceModelName << std::endl;
 		else {
 			std::vector<unsigned int> shape = get_h5_dataset_shape(h5d);
-			Matrix3Xi aux(shape[0], shape[1]);
-			H5Dread(h5d, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &aux(0));
-			triangulation = aux.transpose();
+			MatrixXi aux(shape[0], shape[1]);
+			H5Dread(h5d, H5T_NATIVE_INT32, H5S_ALL, H5S_ALL, H5P_DEFAULT, &aux(0));
+			aux.resize(1, shape[0] * shape[1]);
+			Matrix3Xi triangulationT(shape[0], shape[1]);
+			triangulationT.row(0) = aux.block(0, 0, 1, shape[1]);
+			triangulationT.row(1) = aux.block(0, shape[1], 1, shape[1]);
+			triangulationT.row(2) = aux.block(0, 2*shape[1], 1, shape[1]);
+			triangulation = triangulationT.transpose();
 		}
 		H5Dclose(h5d);
 		H5Fclose(h5file);

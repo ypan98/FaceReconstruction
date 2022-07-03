@@ -5,7 +5,9 @@
 class FaceModel{
 
 public:
-	FaceModel(std::string _faceModel = "BFM17") {
+	FaceModel() {
+	}
+	FaceModel(std::string _faceModel) {
 		DataHandler::readBasis(_faceModel, "shape", shapeBasis);
 		DataHandler::readBasis(_faceModel, "color", colorBasis);
 		DataHandler::readBasis(_faceModel, "expression", expBasis);

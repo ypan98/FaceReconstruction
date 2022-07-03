@@ -41,5 +41,6 @@ src/build/
 
 # Dataset
 *.h5
+data/BFM17/
 
 
