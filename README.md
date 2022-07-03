@@ -1,8 +1,10 @@
 # FaceReconstruction
 ## Data Preparation
 Some files needs to be placed in certain directories so the program can find them, namely:
+```
 - data/
     BFM17.h5      # Basel Face Model 2017, which can be downloaded from "https://faces.dmi.unibas.ch/bfm/bfm2017.html"
+```
 
 ## Install Dependencies
 In order to install dependencies for this project please follow the following steps.
