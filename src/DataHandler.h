@@ -8,6 +8,9 @@
 #include "Utils.h"
 #include <map>
 
+#define NUM_LANDMARKS 68
+#define LANDMARK_DIM 2
+
 // Full paths
 std::string PATH_TO_LANDMARK_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/landmark/");
 std::string PATH_TO_RGB_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/rgb/");
@@ -16,7 +19,9 @@ std::string PATH_TO_MESH_DIR = convert_path(get_full_path_to_project_root_dir() 
 
 std::map<std::string, std::string> FACE_MODEL_TO_DIR_MAP = {
 	{ "BFM17", convert_path(get_full_path_to_project_root_dir() + "/data/BFM17.h5")},
-	{ "BFM17_2", convert_path(get_full_path_to_project_root_dir() + "/data/BFM17_2.h5")}
+};
+std::map<std::string, std::string> FACE_MODEL_TO_LM_DIR_MAP = {
+	{ "BFM17", convert_path(get_full_path_to_project_root_dir() + "/data/BFM17_68_Landmarks.txt")},
 };
 // h5 hierarchy path
 std::map<std::pair<std::string, std::string>, std::string> H5_PATH_MAP = {
@@ -33,8 +38,6 @@ std::map<std::pair<std::string, std::string>, std::string> H5_PATH_MAP = {
 	{ std::make_pair("color", "mean"), "/color/model/mean"},
 };
 
-unsigned int NUM_LANDMARKS = 68; // num of landmark points
-unsigned int LANDMARK_DIM = 2; // each landmark is a 2D point
 
 class DataHandler {
 public:
@@ -44,8 +47,7 @@ public:
 		landmarks = MatrixXf(NUM_LANDMARKS, LANDMARK_DIM);
 		std::string pathToFile = PATH_TO_LANDMARK_DIR + fileName + ".txt";
 		std::ifstream f(pathToFile);
-		if (!f.is_open())
-			std::cerr << "failed to open: " << pathToFile << std::endl;
+		if (!f.is_open()) std::cerr << "failed to open: " << pathToFile << std::endl;
 		for (unsigned int i = 0; i < NUM_LANDMARKS; i++) {
 			for (unsigned int j = 0; j < LANDMARK_DIM; j++) {
 				f >> landmarks(i, j);
@@ -140,6 +142,16 @@ public:
 		H5Dclose(h5d);
 		H5Fclose(h5file);
 	}
+	// read 68 facial landmarks (vertex index) of the corresponding face model
+	static void readFaceModelLandmarks(std::string faceModelName, VectorXi& landmarks) {
+		std::ifstream f(FACE_MODEL_TO_LM_DIR_MAP[faceModelName]);
+		if (!f.is_open()) std::cerr << "failed to open: " << FACE_MODEL_TO_LM_DIR_MAP[faceModelName] << std::endl;
+		landmarks = VectorXi(NUM_LANDMARKS);
+		int vertex_idx;
+		int i = 0;
+		for (int i = 0; i < NUM_LANDMARKS; i++) f >> landmarks(i);
+		f.close();
+	}
 	static bool writeMesh(const Mesh& mesh, const std::string& filename) {
 		std::string pathToFile = PATH_TO_MESH_DIR + filename + ".off";
 
@@ -165,7 +177,7 @@ public:
 		// save vertices
 		outFile << "# list of vertices" << std::endl;
 		outFile << "# X Y Z R G B A" << std::endl;
-		for (int i = 0; i < nVertices; ++i) {
+		for (unsigned i = 0; i < nVertices; ++i) {
 			outFile << mesh.vertices.row(i) << " ";
 			for (int j = 0; j < 3; ++j) {
 				if (mesh.colors(i, j) < 0)
@@ -183,7 +195,7 @@ public:
 		outFile << "# list of faces" << std::endl;
 		outFile << "# nVerticesPerFace idx0 idx1 idx2 ..." << std::endl;
 
-		for (int i = 0; i < nFaces; ++i) {
+		for (unsigned i = 0; i < nFaces; ++i) {
 			outFile << "3 " << mesh.faces.row(i) << std::endl;
 		}
 		return true;
