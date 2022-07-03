@@ -341,14 +341,14 @@ cv::Mat render(FaceModel face_model, Matrix4f projection_matrix, int viewport_wi
 
 	// Get the coordinate of the face model's vertices in clipspace
 	MatrixXf model_vertices(4, face_model.getNumVertices());
-	model_vertices.block(0, 0, 3, face_model.getNumVertices()) = face_model.getShapeMean().reshaped(face_model.getNumVertices(), 3).transpose();
+	model_vertices.block(0, 0, 3, face_model.getNumVertices()) = face_model.getShapeMean().reshaped(3, face_model.getNumVertices());
 	model_vertices.row(3) = VectorXf::Ones(face_model.getNumVertices());
 	MatrixXf clipspace_vertices_coord = (projection_matrix * model_vertices).transpose();
 
 	for (int i = 0; i < face_model.getNumVertices(); ++i) {
 		ModelVertex vertex;
 		vertex.position = clipspace_vertices_coord.row(i);
-		vertex.color = Vector3f(0.5f, 0.5f, 0.5f);
+		vertex.color = Vector3f(face_model.getColorMean()[i * 3], face_model.getColorMean()[i * 3 + 1], face_model.getColorMean()[i * 3 + 2]);
 		vertex.texcoords = Vector2f(0.f, 0.f);
 		clipspace_vertices.push_back(vertex);
 	}
@@ -358,7 +358,6 @@ cv::Mat render(FaceModel face_model, Matrix4f projection_matrix, int viewport_wi
 
 	for (int i = 0; i < face_model.getNumVertices(); ++i) {
 		Vector3i tri_indices = face_model.getTriangulation().row(i);
-		std::cout << tri_indices << std::endl;
 		unsigned char visibility_bits[3];
 		for (unsigned char k = 0; k < 3; k++)
 		{

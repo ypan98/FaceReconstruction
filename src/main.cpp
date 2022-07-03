@@ -55,14 +55,15 @@ void performTask() {
 	}
 	case 3:
 	{
-		//Rasterize a cube
-		FaceModel face_model = FaceModel();
-		MatrixXf coords = face_model.getShapeMean().reshaped(face_model.getNumVertices(),3);
+		float scale_factor = 1/100.f;
+		FaceModel face_model = FaceModel("BFM17");
+		MatrixXf coords = face_model.getShapeMean().reshaped(3, face_model.getNumVertices()).transpose();
 		Vector3f mean = coords.colwise().mean();
-		Matrix4f projection_matrix = Matrix4f::Identity();
-		projection_matrix.block(0, 3, 3, 1) = -mean;
+		Matrix4f projection_matrix = Matrix4f::Identity() * scale_factor;
+		projection_matrix.block(0, 3, 3, 1) = -mean * scale_factor;
+		projection_matrix(3, 3) = 1.f;
 		cv::Mat img = render(face_model, projection_matrix, 720, 720);
-		cv::imwrite("img.png", img);
+		cv::imwrite("../../data/samples/2d face image/sample_image.png", img);
 		break;
 	}
 	default:
