@@ -1,4 +1,10 @@
 # FaceReconstruction
+## Data Preparation
+Some files needs to be placed in certain directories so the program can find them, namely:
+```
+- data/
+    BFM17.h5      # Basel Face Model 2017, which can be downloaded from "https://faces.dmi.unibas.ch/bfm/bfm2017.html"
+```
 
 ## Install Dependencies
 In order to install dependencies for this project please follow the following steps.
@@ -21,11 +27,11 @@ sudo bash install_dependencies_linux.sh
 ```
 
 ### For Windows Users
-#### If you'd like to run this project with Visual Studio Code
+#### If you'd like to run this project with Visual Studio
 1. Make sure you have Git Bash installed in your computer.
 2. Open Git Bash
 3. Set your current working dictory to the root folder of this project
-4. Find your Visual Studio Code Generator's version. For example, "Visual Studio 16 2019"
+4. Find your Visual Studio's version. For example, "Visual Studio 16 2019"
 5. Run the following code with the right Visual Studio version found in the previous step
 ```
 ./install_dependencies_win.sh "Visual Studio 16 2019"
