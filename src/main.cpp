@@ -66,7 +66,7 @@ void performTask() {
 		const auto start = std::chrono::steady_clock::now();
 		cv::Mat img = render(face_model, projection_matrix, 720, 720);
 		const auto end = std::chrono::steady_clock::now();
-		std::cout << "time used: " << std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()/1000000) << "s";
+		std::cout << "time used: " << std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()) << "ms\n";
 		cv::imwrite("../../data/samples/2d face image/sample_image.png", img);
 		break;
 	}
