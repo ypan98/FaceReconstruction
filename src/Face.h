@@ -28,10 +28,10 @@ public:
 	}
 
 	// Randomize parameters (for testing purpose)
-	void randomizeParameters() {
-		alpha = VectorXf::Random(faceModel.getAlphaSize());
-		beta = VectorXf::Random(faceModel.getBetaSize());
-		gamma = VectorXf::Random(faceModel.getGammaSize());
+	void randomizeParameters(float scale = 1) {
+		alpha = VectorXf::Random(faceModel.getAlphaSize())*scale;
+		beta = VectorXf::Random(faceModel.getBetaSize())*scale;
+		gamma = VectorXf::Random(faceModel.getGammaSize())*scale;
 	}
 
 	// construct the mesh with alpha, beta, gamma and face model variables
@@ -93,16 +93,14 @@ private:
 	// geometry
 	MatrixX3f calculateVertices() {
 		MatrixXf vertices = faceModel.getShapeMean() + faceModel.getShapeBasis() * alpha + faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
-		//MatrixXf vertices = faceModel.getShapeMean() + faceModel.getExpMean();
-		vertices.resize(faceModel.getNumVertices(), 3);
-		return vertices;
+		vertices.resize(3, faceModel.getNumVertices());
+		return vertices.transpose();
 	}
 	// color
 	MatrixX3f calculateColors() {
 		MatrixXf colors = faceModel.getColorMean() + faceModel.getColorBasis() * beta;
-		//MatrixXf colors = faceModel.getColorMean();
-		colors.resize(faceModel.getNumVertices(), 3);
-		return colors;
+		colors.resize(3, faceModel.getNumVertices());
+		return colors.transpose();
 	}
 
 };

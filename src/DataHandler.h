@@ -132,14 +132,9 @@ public:
 		if (h5d < 0) std::cerr << "Error reading triangulation from: " << faceModelName << std::endl;
 		else {
 			std::vector<unsigned int> shape = get_h5_dataset_shape(h5d);
-			MatrixXi aux(shape[0], shape[1]);
+			VectorXi aux(shape[0]*shape[1]);
 			H5Dread(h5d, H5T_NATIVE_INT32, H5S_ALL, H5S_ALL, H5P_DEFAULT, &aux(0));
-			aux.resize(1, shape[0] * shape[1]);
-			Matrix3Xi triangulationT(shape[0], shape[1]);
-			triangulationT.row(0) = aux.block(0, 0, 1, shape[1]);
-			triangulationT.row(1) = aux.block(0, shape[1], 1, shape[1]);
-			triangulationT.row(2) = aux.block(0, 2*shape[1], 1, shape[1]);
-			triangulation = triangulationT.transpose();
+			triangulation = aux.reshaped(shape[1], shape[0]);
 		}
 		H5Dclose(h5d);
 		H5Fclose(h5file);
