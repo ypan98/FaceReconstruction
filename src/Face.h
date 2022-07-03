@@ -92,13 +92,15 @@ private:
 
 	// geometry
 	MatrixX3f calculateVertices() {
-		MatrixXf vertices = faceModel.getShapeMean() + faceModel.getShapeBasis() * alpha;
+		MatrixXf vertices = faceModel.getShapeMean() + faceModel.getShapeBasis() * alpha + faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
+		//MatrixXf vertices = faceModel.getShapeMean() + faceModel.getExpMean();
 		vertices.resize(faceModel.getNumVertices(), 3);
 		return vertices;
 	}
 	// color
 	MatrixX3f calculateColors() {
 		MatrixXf colors = faceModel.getColorMean() + faceModel.getColorBasis() * beta;
+		//MatrixXf colors = faceModel.getColorMean();
 		colors.resize(faceModel.getNumVertices(), 3);
 		return colors;
 	}

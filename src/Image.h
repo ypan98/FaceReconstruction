@@ -4,9 +4,10 @@
 // Class to store information of a RGBD Image and the detected landmarks.
 class Image {
 public:
-
+	Image() {
+	}
 	// Constructor that loads all necessary information from the files via DataHandler. If _fileName is not specified, "sample1" is taken as default.
-	Image(std::string _fileName = "sample1") {
+	Image(std::string _fileName) {
 		fileName = _fileName;
 		DataHandler::loadDepthMap(_fileName, depthMap);
 		rgb = std::vector<MatrixXf>(3);
