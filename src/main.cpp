@@ -34,9 +34,10 @@ void performTask() {
 	{
 		// reconstruct face
 		Face sourceFace = Face("sample1", "BFM17");
+		// randomize for testing
+		sourceFace.randomizeParameters(1,1,1);
 		optimizer.optimize(sourceFace);
 		// write out mesh
-		sourceFace.randomizeParameters();
 		sourceFace.writeReconstructedFace();
 		break;
 	}

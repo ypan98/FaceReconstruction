@@ -15,7 +15,8 @@ std::string PATH_TO_DEPTH_DIR = convert_path(get_full_path_to_project_root_dir()
 std::string PATH_TO_MESH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/outputMesh/");
 
 std::map<std::string, std::string> FACE_MODEL_TO_DIR_MAP = {
-	{ "BFM17", convert_path(get_full_path_to_project_root_dir() + "/data/BFM17.h5")}
+	{ "BFM17", convert_path(get_full_path_to_project_root_dir() + "/data/BFM17.h5")},
+	{ "BFM17_2", convert_path(get_full_path_to_project_root_dir() + "/data/BFM17_2.h5")}
 };
 // h5 hierarchy path
 std::map<std::pair<std::string, std::string>, std::string> H5_PATH_MAP = {
@@ -94,8 +95,9 @@ public:
 		if (h5d < 0) std::cerr << "Error reading basis from: " << faceModelName << std::endl;
 		else {
 			std::vector<unsigned int> shape = get_h5_dataset_shape(h5d);
-			basis = MatrixXf(shape[0], shape[1]);
+			basis = MatrixXf(shape[1], shape[0]);
 			H5Dread(h5d, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &basis(0));
+			basis.transposeInPlace();
 		}
 		H5Dclose(h5d);
 		H5Fclose(h5file);
@@ -132,9 +134,8 @@ public:
 		if (h5d < 0) std::cerr << "Error reading triangulation from: " << faceModelName << std::endl;
 		else {
 			std::vector<unsigned int> shape = get_h5_dataset_shape(h5d);
-			VectorXi aux(shape[0]*shape[1]);
-			H5Dread(h5d, H5T_NATIVE_INT32, H5S_ALL, H5S_ALL, H5P_DEFAULT, &aux(0));
-			triangulation = aux.reshaped(shape[1], shape[0]);
+			triangulation =  MatrixXi(shape[1], shape[0]);
+			H5Dread(h5d, H5T_NATIVE_INT32, H5S_ALL, H5S_ALL, H5P_DEFAULT, &triangulation(0));
 		}
 		H5Dclose(h5d);
 		H5Fclose(h5file);
