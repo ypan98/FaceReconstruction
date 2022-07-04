@@ -60,16 +60,20 @@ cv::Mat render(FaceModel face_model, Matrix4f projection_matrix, int viewport_wi
 
 	glShadeModel(GL_SMOOTH);
 
+	glBegin(GL_TRIANGLES);
 	for (int i = 0; i < face_model.getTriangulation().rows(); ++i) {
+
 		for (int v = 0; v < 3; v++) {
+			const auto start = std::chrono::steady_clock::now();
 			int vertex_index = face_model.getTriangulation()(i, v);
 			float w = clipspace_vertices_coord(vertex_index, 3);
-			glBegin(GL_TRIANGLES);
 			glColor3d(face_model.getColorMean()[vertex_index * 3], face_model.getColorMean()[vertex_index * 3 + 1], face_model.getColorMean()[vertex_index * 3 + 2]);
 			glVertex3d(clipspace_vertices_coord(vertex_index, 0) / w, clipspace_vertices_coord(vertex_index, 1) / w, clipspace_vertices_coord(vertex_index, 2) / w);
-			glEnd();
+			const auto end = std::chrono::steady_clock::now();
+			std::cout << "time used: " << std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()) << "ms\n";
 		}
 	}
+	glEnd();
 
 	unsigned char* gl_texture_bytes = (unsigned char*)malloc(sizeof(unsigned char) * viewport_height * viewport_width * 3);
 	glReadPixels(0, 0, viewport_height, viewport_width, 0x80E0, GL_UNSIGNED_BYTE, gl_texture_bytes);
