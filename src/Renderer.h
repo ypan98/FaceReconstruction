@@ -108,7 +108,8 @@ private:
 		glewInit();
 
 		const char* vertex_shader_text =
-			"#version 410\n"
+			"#version 140\n"
+			"#extension GL_ARB_explicit_attrib_location : require\n"
 			"in vec3 vPos;"
 			"in vec3 vCol;"
 			"out vec3 color;\n"
@@ -119,7 +120,8 @@ private:
 			"}\n";
 
 		const char* fragment_shader_text =
-			"#version 410\n"
+			"#version 140\n"
+			"#extension GL_ARB_explicit_attrib_location : require\n"
 			"in vec3 color;\n"
 			"layout (location = 0) out vec4 fragment;\n"
 			"void main()\n"
@@ -131,9 +133,41 @@ private:
 		glShaderSource(vertex_shader, 1, &vertex_shader_text, NULL);
 		glCompileShader(vertex_shader);
 
+		GLint isCompiled = 0;
+		glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &isCompiled);
+		if (isCompiled == GL_FALSE)
+		{
+			GLint maxLength = 0;
+			glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &maxLength);
+
+			// The maxLength includes the NULL character
+			std::vector<GLchar> errorLog(maxLength);
+			glGetShaderInfoLog(vertex_shader, maxLength, &maxLength, &errorLog[0]);
+
+			for (int i = 0; i < errorLog.size(); i++) {
+				std::cout << errorLog[i];
+			}
+			std::cout << std::endl;
+		}
+
 		const GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
 		glShaderSource(fragment_shader, 1, &fragment_shader_text, NULL);
 		glCompileShader(fragment_shader);
+		glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &isCompiled);
+		if (isCompiled == GL_FALSE)
+		{
+			GLint maxLength = 0;
+			glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH, &maxLength);
+
+			// The maxLength includes the NULL character
+			std::vector<GLchar> errorLog(maxLength);
+			glGetShaderInfoLog(fragment_shader, maxLength, &maxLength, &errorLog[0]);
+
+			for (int i = 0; i < errorLog.size(); i++) {
+				std::cout << errorLog[i];
+			}
+			std::cout << std::endl;
+		}
 
 		program = glCreateProgram();
 		glAttachShader(program, vertex_shader);

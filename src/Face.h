@@ -99,11 +99,12 @@ public:
 	}
 
 	VectorXf calculateVerticesDefault() {
-		return faceModel.getShapeMean() + faceModel.getShapeBasis() * alpha + faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
+		return faceModel.getShapeMean() + ((faceModel.getShapeVar().cwiseSqrt().asDiagonal() * faceModel.getShapeBasis().transpose()).transpose()) * alpha +
+			faceModel.getExpMean() + ((faceModel.getExpVar().cwiseSqrt().asDiagonal() * faceModel.getExpBasis().transpose()).transpose()) * gamma;
 	}
 
 	VectorXf calculateColorsDefault() {
-		return faceModel.getColorMean() + faceModel.getColorBasis() * beta;
+		return faceModel.getColorMean() + ((faceModel.getColorVar().cwiseSqrt().asDiagonal() * faceModel.getColorBasis().transpose()).transpose()) * beta;
 	}
 private:
 	VectorXf alpha, beta, gamma;	// parameters to optimize
