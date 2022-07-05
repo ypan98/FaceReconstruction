@@ -69,7 +69,7 @@ void performTask() {
 		projection_matrix.block(0, 3, 3, 1) = -mean * scale_factor;
 		projection_matrix(3, 3) = 1.f;
 		const auto start = std::chrono::steady_clock::now();
-		cv::Mat img = renderer.render(face, projection_matrix, 360, 360);
+		cv::Mat img = renderer.render(face, projection_matrix, 720, 720);
 		const auto end = std::chrono::steady_clock::now();
 		std::cout << "time used: " << std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()) << "ms\n";
 		cv::imwrite("../../data/samples/2d face image/sample_image.png", img);
