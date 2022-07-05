@@ -18,6 +18,7 @@ public:
 		DataHandler::readVariance(_faceModel, "color", colorVar);
 		DataHandler::readVariance(_faceModel, "expression", expVar);
 		DataHandler::readTriangulation(_faceModel, triangulation);
+		DataHandler::readFaceModelLandmarks(_faceModel, landmarks);
 	}
 
 	unsigned int getNumVertices() {
@@ -80,6 +81,9 @@ public:
 	MatrixX3i getTriangulation() {
 		return triangulation;
 	}
+	VectorXi getLandmarks() {
+		return landmarks;
+	}
 
 	// just for debug
 	void setTriangulation(MatrixX3i triangulation_) {
@@ -96,4 +100,6 @@ private:
   MatrixXf shapeBasis, colorBasis, expBasis;
   // triangulation of the vertices. Shape = [num_faces, 3]
   MatrixX3i triangulation;
+  // vector with index of the vertices corresponding to the facial landmarks
+  VectorXi landmarks;
 };

@@ -24,14 +24,14 @@ public:
 	
 	// Transfer the expression from the source face to the current face
 	void transferExpression(const Face& sourceFace) {
-
+		this->gamma = sourceFace.gamma;
 	}
 
 	// Randomize parameters (for testing purpose)
-	void randomizeParameters(float scale = 1) {
-		alpha = VectorXf::Random(faceModel.getAlphaSize())*scale;
-		beta = VectorXf::Random(faceModel.getBetaSize())*scale;
-		gamma = VectorXf::Random(faceModel.getGammaSize())*scale;
+	void randomizeParameters(float scaleAlpha = 1, float scaleBeta = 1, float scaleGamma = 1) {
+		alpha = VectorXf::Random(faceModel.getAlphaSize()) * scaleAlpha;
+		beta = VectorXf::Random(faceModel.getBetaSize()) * scaleBeta;
+		gamma = VectorXf::Random(faceModel.getGammaSize()) * scaleGamma;
 	}
 
 	// construct the mesh with alpha, beta, gamma and face model variables
@@ -83,13 +83,17 @@ public:
 	}
 	// geometry
 	MatrixX3f calculateVertices() {
-		MatrixXf vertices = faceModel.getShapeMean() + faceModel.getShapeBasis() * alpha + faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
+		/*MatrixXf vertices = faceModel.getShapeMean() + faceModel.getShapeBasis() * (faceModel.getShapeVar().cwiseSqrt().cwiseProduct(alpha)) + 
+			faceModel.getExpMean() + faceModel.getExpBasis()*(faceModel.getExpVar().cwiseSqrt().cwiseProduct(gamma));*/
+		MatrixXf vertices = faceModel.getShapeMean() + ((faceModel.getShapeVar().cwiseSqrt().asDiagonal() * faceModel.getShapeBasis().transpose()).transpose()) * alpha +
+			faceModel.getExpMean() + ((faceModel.getExpVar().cwiseSqrt().asDiagonal() * faceModel.getExpBasis().transpose()).transpose()) * gamma;
 		vertices.resize(3, faceModel.getNumVertices());
 		return vertices.transpose();
 	}
 	// color
 	MatrixX3f calculateColors() {
-		MatrixXf colors = faceModel.getColorMean() + faceModel.getColorBasis() * beta;
+		//MatrixXf colors = faceModel.getColorMean() + faceModel.getColorBasis()*(faceModel.getColorVar().cwiseSqrt().cwiseProduct(beta));
+		MatrixXf colors = faceModel.getColorMean() + ((faceModel.getColorVar().cwiseSqrt().asDiagonal() * faceModel.getColorBasis().transpose()).transpose()) * beta;
 		colors.resize(3, faceModel.getNumVertices());
 		return colors.transpose();
 	}
