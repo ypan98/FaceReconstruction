@@ -25,7 +25,12 @@ is done.
 dos2unix install_dependencies_linux.sh
 sudo bash install_dependencies_linux.sh
 ```
-
+3. Install OpenGL libraries **glfw3** and **glew**.
+```
+sudo apt-get install libglew-dev
+sudo apt-get install libglfw3
+sudo apt-get install libglfw3-dev
+```
 ### For Windows Users
 #### If you'd like to run this project with Visual Studio
 1. Make sure you have Git Bash installed in your computer.
@@ -46,7 +51,7 @@ wsl
 for ubuntu users. (hint: to switch to disk C for example you can use cd /mnt/c/)
 
 ## Build the project
-### For Visual Studio Code users
+### For Visual Studio users
 You have to copy all the .dll files of libraries glog, opencv and hdf5 to your executable's folder. After this you will be able build the target **face_reconstruction**.
 ### For WSL and Linux-system users
 1. Go to the **src** folder

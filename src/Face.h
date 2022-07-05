@@ -81,15 +81,6 @@ public:
 	FaceModel getFaceModel() {
 		return faceModel;
 	}
-
-private:
-	VectorXf alpha, beta, gamma;	// parameters to optimize
-	Matrix3f intrinsics;	// given by camera manufacturer, otherwise hardcode it?
-	Matrix4f extrinsics;	// given by optimization
-	Image image;	// the corresponding image
-	FaceModel faceModel;	// the used face model, ie BFM17
-	MatrixX3f normals; // normal of the vertices
-
 	// geometry
 	MatrixX3f calculateVertices() {
 		/*MatrixXf vertices = faceModel.getShapeMean() + faceModel.getShapeBasis() * (faceModel.getShapeVar().cwiseSqrt().cwiseProduct(alpha)) + 
@@ -107,4 +98,18 @@ private:
 		return colors.transpose();
 	}
 
+	VectorXf calculateVerticesDefault() {
+		return faceModel.getShapeMean() + faceModel.getShapeBasis() * alpha + faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
+	}
+
+	VectorXf calculateColorsDefault() {
+		return faceModel.getColorMean() + faceModel.getColorBasis() * beta;
+	}
+private:
+	VectorXf alpha, beta, gamma;	// parameters to optimize
+	Matrix3f intrinsics;	// given by camera manufacturer, otherwise hardcode it?
+	Matrix4f extrinsics;	// given by optimization
+	Image image;	// the corresponding image
+	FaceModel faceModel;	// the used face model, ie BFM17
+	MatrixX3f normals; // normal of the vertices
 };
