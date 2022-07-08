@@ -19,17 +19,17 @@ sudo /usr/sbin/update-ccache-symlinks
 echo 'export PATH="/usr/lib/ccache:$PATH"' | tee -a ~/.bashrc
 source ~/.bashrc && echo $PATH
 ```
-2. Set your current working dictory to the root folder of this project, run the following code and do not close the terminal until the installation
-is done.
-```
-dos2unix install_dependencies_linux.sh
-sudo bash install_dependencies_linux.sh
-```
-3. Install OpenGL libraries **glfw3** and **glew**.
+2. Install OpenGL libraries **glfw3** and **glew**.
 ```
 sudo apt-get install libglew-dev
 sudo apt-get install libglfw3
 sudo apt-get install libglfw3-dev
+```
+3. Set your current working dictory to the root folder of this project, run the following code and do not close the terminal until the installation
+is done.
+```
+dos2unix install_dependencies_linux.sh
+sudo bash install_dependencies_linux.sh
 ```
 ### For Windows Users
 #### If you'd like to run this project with Visual Studio
