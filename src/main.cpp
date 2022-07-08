@@ -63,7 +63,7 @@ void performTask() {
 		auto& renderer = Renderer::Get();
 		float scale_factor = 1 / 100.f;
 		Face face;
-		face.randomizeParameters();
+		face.randomizeParameters(1, 1, 2);
 		MatrixXf coords = face.calculateVerticesDefault().reshaped(3, face.getFaceModel().getNumVertices()).transpose();
 		Vector3f mean = coords.colwise().mean();
 		Matrix4f projection_matrix = Matrix4f::Identity() * scale_factor;
@@ -73,7 +73,8 @@ void performTask() {
 		cv::Mat img = renderer.render(face, projection_matrix, 720, 720);
 		const auto end = std::chrono::steady_clock::now();
 		std::cout << "time used: " << std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()) << "ms\n";
-		cv::imwrite("../../data/samples/2d face image/sample_image.png", img);
+		cv::imshow("Rasterized Face", img);
+		cv::waitKey(0);
 		break;
 	}
 	default:
