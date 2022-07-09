@@ -7,6 +7,10 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+/*
+	In order to initialize this render class you have to specify the size of the viewport and also the face model
+	you are using.
+*/
 class Renderer{
 public:
 	Renderer(int height, int width, FaceModel face_model) {
