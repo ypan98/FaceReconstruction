@@ -6,9 +6,6 @@
 
 using namespace std;
 
-// singleton class
-Renderer Renderer::s_instance;
-
 vector<string> taskOptions{ "Face reconstruction", "Expression transfer", "Rasterize random face" };
 int taskOption = -1;
 // For now we only hadle sample images case
@@ -60,20 +57,29 @@ void performTask() {
 	}
 	case 3:
 	{
-		auto& renderer = Renderer::Get();
-		float scale_factor = 1 / 100.f;
+		// Initialize Renderer
+		FaceModel face_model = FaceModel("BFM17");
+		Renderer renderer(720, 720, face_model);
+		// Initialize a random face
 		Face face;
 		face.randomizeParameters();
+		// Initialize the default projection matrix which moves the face to origin
+		float scale_factor = 1 / 100.f;
 		MatrixXf coords = face.calculateVerticesDefault().reshaped(3, face.getFaceModel().getNumVertices()).transpose();
 		Vector3f mean = coords.colwise().mean();
 		Matrix4f projection_matrix = Matrix4f::Identity() * scale_factor;
 		projection_matrix.block(0, 3, 3, 1) = -mean * scale_factor;
 		projection_matrix(3, 3) = 1.f;
-		const auto start = std::chrono::steady_clock::now();
-		cv::Mat img = renderer.render(face, projection_matrix, 720, 720);
-		const auto end = std::chrono::steady_clock::now();
+		// Render the face and project it to a 2D plane
+		auto start = std::chrono::steady_clock::now();
+		std::pair img = renderer.render(face, projection_matrix, 720, 720);
+		auto end = std::chrono::steady_clock::now();
 		std::cout << "time used: " << std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()) << "ms\n";
-		cv::imwrite("../../data/samples/2d face image/sample_image.png", img);
+		// Rescale the range of the depth to 0-255 in order to save the sample images
+		cv::Mat depth_to_visualize;
+		cv::normalize(img.second, depth_to_visualize, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+		cv::imwrite("../../data/samples/2d face image/sample_image.png", img.first);
+		cv::imwrite("../../data/samples/2d face image/sample_image_depth.png", depth_to_visualize);
 		break;
 	}
 	default:
