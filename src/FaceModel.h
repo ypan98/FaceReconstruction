@@ -1,6 +1,10 @@
 #pragma once
 #include "DataHandler.h"
 
+#define BFM_ALPHA_SIZE 199
+#define BFM_BETA_SIZE 199
+#define BFM_GAMMA_SIZE 99
+
 // Class for a face model
 class FaceModel{
 
@@ -8,6 +12,7 @@ public:
 	FaceModel() {
 	}
 	FaceModel(std::string _faceModel) {
+		faceModelName = _faceModel;
 		DataHandler::readBasis(_faceModel, "shape", shapeBasis);
 		DataHandler::readBasis(_faceModel, "color", colorBasis);
 		DataHandler::readBasis(_faceModel, "expression", expBasis);
@@ -21,85 +26,123 @@ public:
 		DataHandler::readFaceModelLandmarks(_faceModel, landmarks);
 	}
 
-	unsigned int getNumVertices() {
+	std::string getFaceModelName() {
+		return faceModelName;
+	}
+	unsigned int getNumVertices() const {
 		return shapeBasis.rows()/3;
 	}
 
-	unsigned int getAlphaSize() {
+	unsigned int getAlphaSize() const {
 		return shapeBasis.cols();
 	}
 
-	unsigned int getBetaSize() {
+	unsigned int getBetaSize() const {
 		return colorBasis.cols();
 	}
 
-	unsigned int getGammaSize() {
+	unsigned int getGammaSize() const {
 		return expBasis.cols();
 	}
 
-	VectorXf getShapeMean() {
+	VectorXd getShapeMean() const {
 		return shapeMean;
 	}
 
-	// just for debug
-	void setShapeMean(VectorXf shape_mean) {
-		shapeMean = shape_mean;
+	double getShapeMeanElem(unsigned idx) const {
+		return shapeMean(idx, 0);
 	}
 
-	VectorXf getColorMean() {
+	VectorXd getColorMean() const {
 		return colorMean;
 	}
 
-	VectorXf getExpMean() {
+	double getColorMeanElem(unsigned idx) const {
+		return colorMean(idx, 0);
+	}
+
+	VectorXd getExpMean() const {
 		return expMean;
 	}
 
-	VectorXf getShapeVar() {
+	double getExpMeanElem(unsigned idx) const {
+		return expMean(idx, 0);
+	}
+
+	VectorXd getShapeVar() const {
 		return shapeVar;
 	}
 
-	VectorXf getColorVar() {
+	VectorXd getColorVar() const {
 		return colorVar;
 	}
 
-	VectorXf getExpVar() {
+	VectorXd getExpVar() const {
 		return expVar;
 	}
 
-	MatrixXf getShapeBasis() {
+	MatrixXd getShapeBasis() const {
 		return shapeBasis;
 	}
 
-	MatrixXf getColorBasis() {
+	MatrixXd getShapeBasisStdMultiplied() const {
+		return (shapeVar.cwiseSqrt().asDiagonal() * shapeBasis.transpose()).transpose();
+	}
+
+	double getShapeBasisStdMultipliedElem(unsigned i, unsigned j) const {
+		return shapeBasis(i, j) * sqrt(shapeVar(j, 0));
+	}
+
+	MatrixXd getColorBasis() const {
 		return colorBasis;
 	}
 
-	MatrixXf getExpBasis() {
+	MatrixXd getColoBasisStdMultiplied() const {
+		return (colorVar.cwiseSqrt().asDiagonal() * colorBasis.transpose()).transpose();
+	}
+
+	double getColoBasisStdMultipliedElem(unsigned i, unsigned j) const {
+		return colorBasis(i, j) * sqrt(colorVar(j, 0));
+	}
+
+	MatrixXd getExpBasis() const {
 		return expBasis;
 	}
 
-	MatrixX3i getTriangulation() {
+	MatrixXd getExpBasisStdMultiplied() const {
+		return (expVar.cwiseSqrt().asDiagonal() * expBasis.transpose()).transpose();
+	}
+
+	double getExpBasisStdMultipliedElem(unsigned i, unsigned j) const {
+		return expBasis(i, j) * sqrt(expVar(j, 0));
+	}
+
+	MatrixX3i getTriangulation() const {
 		return triangulation;
 	}
-	VectorXi getLandmarks() {
+
+	unsigned getNumLandmarks() const {
+		return landmarks.rows();
+	}
+
+	VectorXi getLandmarks() const {
 		return landmarks;
 	}
 
-	// just for debug
-	void setTriangulation(MatrixX3i triangulation_) {
-		triangulation = triangulation_;
+	unsigned getLandmarkVertexIdx(unsigned i) const {
+		return landmarks.row(i).value();
 	}
 
-private:
-  
+//private:
+  std::string faceModelName;
   // Mean of the eigenvectors in the basis. Shape = 3*num_vertices (because each vertex is a 3D point)
-  VectorXf shapeMean, colorMean, expMean;
+  VectorXd shapeMean, colorMean, expMean;
   // Variance of the eigenvectors in the basis. Shape = num_eigenvectors
-  VectorXf shapeVar, colorVar, expVar;
+  VectorXd shapeVar, colorVar, expVar;
   // Basis formed by the eigvectors. Shape = [3*num_vectices, num_eigenvectors]
-  MatrixXf shapeBasis, colorBasis, expBasis;
+  MatrixXd shapeBasis, colorBasis, expBasis;
   // triangulation of the vertices. Shape = [num_faces, 3]
   MatrixX3i triangulation;
-  // vector with index of the vertices corresponding to the facial landmarks
+  // vector with index of the vertices corresponding to the facial landmarks. Shape = [68, 1]
   VectorXi landmarks;
 };

@@ -42,9 +42,9 @@ std::map<std::pair<std::string, std::string>, std::string> H5_PATH_MAP = {
 class DataHandler {
 public:
 	// read the precomputed landmarks from the file 
-	static void loadLandmarks(std::string fileName, MatrixX2f& landmarks) {
+	static void loadLandmarks(std::string fileName, MatrixX2d& landmarks) {
 
-		landmarks = MatrixXf(NUM_LANDMARKS, LANDMARK_DIM);
+		landmarks = MatrixXd(NUM_LANDMARKS, LANDMARK_DIM);
 		std::string pathToFile = PATH_TO_LANDMARK_DIR + fileName + ".txt";
 		std::ifstream f(pathToFile);
 		if (!f.is_open()) std::cerr << "failed to open: " << pathToFile << std::endl;
@@ -55,14 +55,14 @@ public:
 		}
 	}
 	// read rgb value of the pixels from the image
-	static void loadRGB(std::string fileName, std::vector<MatrixXf>& rgb) {
+	static void loadRGB(std::string fileName, std::vector<MatrixXd>& rgb) {
 		std::string pathToFile = PATH_TO_RGB_DIR + fileName + ".jpeg";
 		try
 		{
 			cv::Mat image = cv::imread(pathToFile, cv::IMREAD_COLOR);
 			cv::Mat rgbMat[3];
 			split(image, rgbMat);	//split source
-			MatrixXf r, g, b;
+			MatrixXd r, g, b;
 			cv::cv2eigen(rgbMat[0], r);
 			rgb[0] = r;
 			cv::cv2eigen(rgbMat[1], g);
@@ -77,7 +77,7 @@ public:
 		}
 	}
 	// read the depth map of the image
-	static void loadDepthMap(std::string fileName, MatrixXf& depthMap) {
+	static void loadDepthMap(std::string fileName, MatrixXd& depthMap) {
 		std::string pathToFile = PATH_TO_DEPTH_DIR + fileName + ".jpeg";
 		try
 		{
@@ -91,14 +91,14 @@ public:
 		}
 	}
 	// read basis from hdf5 file
-	static void readBasis(std::string faceModelName, std::string basisName, MatrixXf& basis) {
+	static void readBasis(std::string faceModelName, std::string basisName, MatrixXd& basis) {
 		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP[faceModelName].c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
 		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP[std::make_pair(basisName, "basis")].c_str(), H5P_DEFAULT);
 		if (h5d < 0) std::cerr << "Error reading basis from: " << faceModelName << std::endl;
 		else {
 			std::vector<unsigned int> shape = get_h5_dataset_shape(h5d);
-			basis = MatrixXf(shape[1], shape[0]);
-			H5Dread(h5d, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &basis(0));
+			basis = MatrixXd(shape[1], shape[0]);
+			H5Dread(h5d, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &basis(0));
 			basis.transposeInPlace();
 		}
 		H5Dclose(h5d);
@@ -106,25 +106,25 @@ public:
 
 	}
 	// read mean from hdf5 file
-	static void readMean(std::string faceModelName, std::string meanName, VectorXf& mean) {
+	static void readMean(std::string faceModelName, std::string meanName, VectorXd& mean) {
 		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP[faceModelName].c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
 		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP[std::make_pair(meanName, "mean")].c_str(), H5P_DEFAULT);
 		if (h5d < 0) std::cerr << "Error reading mean from: " << faceModelName << std::endl;
 		else {
-			mean = VectorXf(get_h5_dataset_shape(h5d)[0]);
-			H5Dread(h5d, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &mean(0));
+			mean = VectorXd(get_h5_dataset_shape(h5d)[0]);
+			H5Dread(h5d, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &mean(0));
 		}
 		H5Dclose(h5d);
 		H5Fclose(h5file);
 	}
 	// read variance from hdf5 file
-	static void readVariance(std::string faceModelName, std::string varianceName, VectorXf& variance) {
+	static void readVariance(std::string faceModelName, std::string varianceName, VectorXd& variance) {
 		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP[faceModelName].c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
 		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP[std::make_pair(varianceName, "variance")].c_str(), H5P_DEFAULT);
 		if (h5d < 0) std::cerr << "Error reading variance from: " << faceModelName << std::endl;
 		else {
-			variance = VectorXf(get_h5_dataset_shape(h5d)[0]);
-			H5Dread(h5d, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &variance(0));
+			variance = VectorXd(get_h5_dataset_shape(h5d)[0]);
+			H5Dread(h5d, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &variance(0));
 		}
 		H5Dclose(h5d);
 		H5Fclose(h5file);
@@ -147,7 +147,6 @@ public:
 		std::ifstream f(FACE_MODEL_TO_LM_DIR_MAP[faceModelName]);
 		if (!f.is_open()) std::cerr << "failed to open: " << FACE_MODEL_TO_LM_DIR_MAP[faceModelName] << std::endl;
 		landmarks = VectorXi(NUM_LANDMARKS);
-		int vertex_idx;
 		int i = 0;
 		for (int i = 0; i < NUM_LANDMARKS; i++) f >> landmarks(i);
 		f.close();

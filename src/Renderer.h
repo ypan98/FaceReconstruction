@@ -149,8 +149,8 @@ public:
 
 	std::pair<cv::Mat, cv::Mat> render(Face face, Matrix4f projection_matrix, bool enable_backface_culling = true, bool enable_near_clipping = true, bool enable_far_clipping = true)
 	{
-		VectorXf vertices = face.calculateVerticesDefault();
-		VectorXf colors = face.calculateColorsDefault();
+		VectorXf vertices = face.calculateVerticesDefault().cast<float>();
+		VectorXf colors = face.calculateColorsDefault().cast<float>();
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glViewport(0, 0, viewport_width, viewport_height);
