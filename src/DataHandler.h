@@ -12,19 +12,19 @@
 #define LANDMARK_DIM 2
 
 // Full paths
-std::string PATH_TO_LANDMARK_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/landmark/");
-std::string PATH_TO_RGB_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/rgb/");
-std::string PATH_TO_DEPTH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/depth/");
-std::string PATH_TO_MESH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/outputMesh/");
+const std::string PATH_TO_LANDMARK_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/landmark/");
+const std::string PATH_TO_RGB_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/rgb/");
+const std::string PATH_TO_DEPTH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/depth/");
+const std::string PATH_TO_MESH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/outputMesh/");
 
-std::map<std::string, std::string> FACE_MODEL_TO_DIR_MAP = {
+const std::map<std::string, std::string> FACE_MODEL_TO_DIR_MAP = {
 	{ "BFM17", convert_path(get_full_path_to_project_root_dir() + "/data/BFM17.h5")},
 };
-std::map<std::string, std::string> FACE_MODEL_TO_LM_DIR_MAP = {
+const std::map<std::string, std::string> FACE_MODEL_TO_LM_DIR_MAP = {
 	{ "BFM17", convert_path(get_full_path_to_project_root_dir() + "/data/BFM17_68_Landmarks.txt")},
 };
 // h5 hierarchy path
-std::map<std::pair<std::string, std::string>, std::string> H5_PATH_MAP = {
+const std::map<std::pair<std::string, std::string>, std::string> H5_PATH_MAP = {
 	// BFM 2017
 	{ std::make_pair("shape", "triangulation"), "/shape/representer/cells"},	// Triangulation (identical for shape/expr/color)
 	{ std::make_pair("shape", "basis"), "/shape/model/pcaBasis"},
@@ -92,8 +92,8 @@ public:
 	}
 	// read basis from hdf5 file
 	static void readBasis(std::string faceModelName, std::string basisName, MatrixXf& basis) {
-		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP[faceModelName].c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP[std::make_pair(basisName, "basis")].c_str(), H5P_DEFAULT);
+		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP.at(faceModelName).c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP.at(std::make_pair(basisName, "basis")).c_str(), H5P_DEFAULT);
 		if (h5d < 0) std::cerr << "Error reading basis from: " << faceModelName << std::endl;
 		else {
 			std::vector<unsigned int> shape = get_h5_dataset_shape(h5d);
@@ -107,8 +107,8 @@ public:
 	}
 	// read mean from hdf5 file
 	static void readMean(std::string faceModelName, std::string meanName, VectorXf& mean) {
-		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP[faceModelName].c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP[std::make_pair(meanName, "mean")].c_str(), H5P_DEFAULT);
+		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP.at(faceModelName).c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP.at(std::make_pair(meanName, "mean")).c_str(), H5P_DEFAULT);
 		if (h5d < 0) std::cerr << "Error reading mean from: " << faceModelName << std::endl;
 		else {
 			mean = VectorXf(get_h5_dataset_shape(h5d)[0]);
@@ -119,8 +119,8 @@ public:
 	}
 	// read variance from hdf5 file
 	static void readVariance(std::string faceModelName, std::string varianceName, VectorXf& variance) {
-		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP[faceModelName].c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP[std::make_pair(varianceName, "variance")].c_str(), H5P_DEFAULT);
+		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP.at(faceModelName).c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP.at(std::make_pair(varianceName, "variance")).c_str(), H5P_DEFAULT);
 		if (h5d < 0) std::cerr << "Error reading variance from: " << faceModelName << std::endl;
 		else {
 			variance = VectorXf(get_h5_dataset_shape(h5d)[0]);
@@ -131,8 +131,8 @@ public:
 	}
 	// read triangulation from hdf5 file
 	static void readTriangulation(std::string faceModelName, MatrixX3i& triangulation) {
-		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP[faceModelName].c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP[std::make_pair("shape", "triangulation")].c_str(), H5P_DEFAULT);
+		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP.at(faceModelName).c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP.at(std::make_pair("shape", "triangulation")).c_str(), H5P_DEFAULT);
 		if (h5d < 0) std::cerr << "Error reading triangulation from: " << faceModelName << std::endl;
 		else {
 			std::vector<unsigned int> shape = get_h5_dataset_shape(h5d);
@@ -144,8 +144,8 @@ public:
 	}
 	// read 68 facial landmarks (vertex index) of the corresponding face model
 	static void readFaceModelLandmarks(std::string faceModelName, VectorXi& landmarks) {
-		std::ifstream f(FACE_MODEL_TO_LM_DIR_MAP[faceModelName]);
-		if (!f.is_open()) std::cerr << "failed to open: " << FACE_MODEL_TO_LM_DIR_MAP[faceModelName] << std::endl;
+		std::ifstream f(FACE_MODEL_TO_LM_DIR_MAP.at(faceModelName));
+		if (!f.is_open()) std::cerr << "failed to open: " << FACE_MODEL_TO_LM_DIR_MAP.at(faceModelName) << std::endl;
 		landmarks = VectorXi(NUM_LANDMARKS);
 		int vertex_idx;
 		int i = 0;

@@ -6,9 +6,6 @@
 
 using namespace std;
 
-// singleton class
-Renderer Renderer::s_instance;
-
 vector<string> taskOptions{ "Face reconstruction", "Expression transfer", "Rasterize random face" };
 int taskOption = -1;
 // For now we only hadle sample images case
@@ -60,7 +57,6 @@ void performTask() {
 	}
 	case 3:
 	{
-		auto& renderer = Renderer::Get();
 		float scale_factor = 1 / 100.f;
 		Face face;
 		face.randomizeParameters();
@@ -70,10 +66,13 @@ void performTask() {
 		projection_matrix.block(0, 3, 3, 1) = -mean * scale_factor;
 		projection_matrix(3, 3) = 1.f;
 		const auto start = std::chrono::steady_clock::now();
-		cv::Mat img = renderer.render(face, projection_matrix, 720, 720);
+		std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> buffers = render(face, projection_matrix.transpose(), 720, 720);
 		const auto end = std::chrono::steady_clock::now();
 		std::cout << "time used: " << std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()) << "ms\n";
-		cv::imwrite("../../data/samples/2d face image/sample_image.png", img);
+		cv::Mat depth_to_visualize;
+		cv::normalize(std::get<1>(buffers), depth_to_visualize, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+		cv::imwrite("../../data/samples/2d face image/sample_image_depth.png", depth_to_visualize);
+		cv::imwrite("../../data/samples/2d face image/sample_image.png", std::get<0>(buffers));
 		break;
 	}
 	default:

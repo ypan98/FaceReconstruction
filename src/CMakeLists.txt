@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.9)
 set(CMAKE_CONFIGURATION_TYPES Debug Release CACHE TYPE INTERNAL FORCE)
 
 project(face_reconstruction)
+enable_language(CUDA)
 
 # Options
 get_filename_component(PROJECT_DIR ../ ABSOLUTE)
@@ -51,6 +52,7 @@ if(WIN32)
     find_package(Eigen3 REQUIRED)
     find_package(HDF5 REQUIRED)
     find_package(OpenGL REQUIRED)
+    find_package(CUDA REQUIRED)
 else()
     find_package(glog REQUIRED)
     find_package(Ceres REQUIRED)
@@ -60,8 +62,11 @@ else()
     find_package(OpenGL REQUIRED)
     find_package(glfw3 REQUIRED)
     find_package(GLEW REQUIRED)
+    find_package(CUDA REQUIRED)
 endif()
 
+set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE ON)
+set(CUDA_SEPARABLE_COMPILATION ON)
 add_definitions("-D_DISABLE_EXTENDED_ALIGNED_STORAGE")
 
 if (MSVC)
@@ -71,9 +76,12 @@ endif()
 file(GLOB SOURCE_FILES
      "*.h"
      "*.cpp"
+     "*.cu"
+     "*.cuh"
 )
 
-add_executable(face_reconstruction main.cpp ${SOURCE_FILES})
+add_executable(face_reconstruction ${SOURCE_FILES})
+
 if(WIN32)
     target_link_libraries(face_reconstruction ${CERES_LIBRARIES} ${OpenCV_LIBS} ${HDF5_LIBRARIES} ${GLEW_LIBRARIES} ${GLFW_LIBRARIES} ${OPENGL32_LIBRARY})
     target_include_directories(face_reconstruction PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${Eigen3_INCLUDE_DIR} ${glog_INCLUDE_DIR} ${Ceres_INCLUDE_DIR}  ${OpenCV_INCLUDE_DIRS} ${HDF5_INCLUDE_DIR} ${GLFW_INCLUDE_DIR} ${GLEW_INCLUDE_DIR})
