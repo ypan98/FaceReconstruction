@@ -167,14 +167,14 @@ __device__ void raster_triangle(TriangleToRasterize triangle, unsigned char* col
 						gamma *= d * triangle.one_over_z2;
 
 						// attributes interpolation
-						double red_ = alpha * static_cast<double>(triangle.v0.color.x) + beta * static_cast<double>(triangle.v1.color.x) + gamma * static_cast<double>(triangle.v2.color.x);
-						double blue_ = alpha * static_cast<double>(triangle.v0.color.y) + beta * static_cast<double>(triangle.v1.color.y) + gamma * static_cast<double>(triangle.v2.color.y);
-						double green_ = alpha * static_cast<double>(triangle.v0.color.z) + beta * static_cast<double>(triangle.v1.color.z) + gamma * static_cast<double>(triangle.v2.color.z);
+						float red_ = alpha * triangle.v0.color.x + beta * triangle.v1.color.x + gamma * triangle.v2.color.x;
+						float blue_ = alpha * triangle.v0.color.y + beta * triangle.v1.color.y + gamma * triangle.v2.color.y;
+						float green_ = alpha * triangle.v0.color.z + beta * triangle.v1.color.z + gamma * triangle.v2.color.z;
 
 						// clamp bytes to 255
-						const unsigned char red = static_cast<unsigned char>(255.0f * fminf(static_cast<float>(red_), 1.0f));
-						const unsigned char green = static_cast<unsigned char>(255.0f * fminf(static_cast<float>(blue_), 1.0f));
-						const unsigned char blue = static_cast<unsigned char>(255.0f * fminf(static_cast<float>(green_), 1.0f));
+						const unsigned char red = static_cast<unsigned char>(255.0f * fminf(red_, 1.0f));
+						const unsigned char green = static_cast<unsigned char>(255.0f * fminf(blue_, 1.0f));
+						const unsigned char blue = static_cast<unsigned char>(255.0f * fminf(green_, 1.0f));
 
 						// update buffers
 						color_buffer[index * 3] = blue;
@@ -210,6 +210,7 @@ __global__ void render_(int* indices_buffer, float* vertex_position_buffer, floa
 			int v_id = indices_buffer[3 * triangle_index + i];
 			float4 vertex_position = make_float4(vertex_position_buffer[v_id * 3], vertex_position_buffer[v_id * 3 + 1], vertex_position_buffer[v_id * 3 + 2], 1.f);
 			vertices[i].position = projection(projection_matrix, vertex_position);
+			vertices[i].color = make_float4(vertex_color_buffer[v_id * 3], vertex_color_buffer[v_id * 3 + 1], vertex_color_buffer[v_id * 3 + 2], 1.f);
 		}
 
 		TriangleToRasterize triangles_to_raster;
@@ -290,6 +291,13 @@ std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> render(Face & face, Matrix4f proj
 
 	cudaDeviceSynchronize();
 
+	cudaEventRecord(stop);
+	cudaEventSynchronize(stop);
+	float milliseconds = 0;
+	cudaEventElapsedTime(&milliseconds, start, stop);
+	std::string time = std::to_string(milliseconds);
+	std::printf(time.c_str());
+
 	cudaMemcpyAsync(device_projection, projectionMatrix.data(), 16 * sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpyAsync(device_vertices, vertices.data(), num_vertices * 3 * sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpyAsync(device_colors, colors.data(), num_vertices * 3 * sizeof(float), cudaMemcpyHostToDevice);
@@ -330,13 +338,5 @@ std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> render(Face & face, Matrix4f proj
 		cudaStreamDestroy(streams[i]);
 	}
 	cudaDeviceSynchronize();
-
-	cudaEventRecord(stop);
-	cudaEventSynchronize(stop);
-	float milliseconds = 0;
-	cudaEventElapsedTime(&milliseconds, start, stop);
-	std::string time = std::to_string(milliseconds);
-	std::printf(time.c_str());
-
 	return std::tuple(color_img, depth_img, pixel_bary_coord_buffer, pixel_triangle_buffer);
 }

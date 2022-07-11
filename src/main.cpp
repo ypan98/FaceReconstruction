@@ -65,10 +65,12 @@ void performTask() {
 		Matrix4f projection_matrix = Matrix4f::Identity() * scale_factor;
 		projection_matrix.block(0, 3, 3, 1) = -mean * scale_factor;
 		projection_matrix(3, 3) = 1.f;
+		
 		const auto start = std::chrono::steady_clock::now();
 		std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> buffers = render(face, projection_matrix.transpose(), 720, 720);
 		const auto end = std::chrono::steady_clock::now();
 		std::cout << "time used: " << std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()) << "ms\n";
+
 		cv::Mat depth_to_visualize;
 		cv::normalize(std::get<1>(buffers), depth_to_visualize, 0, 255, cv::NORM_MINMAX, CV_8UC1);
 		cv::imwrite("../../data/samples/2d face image/sample_image_depth.png", depth_to_visualize);
