@@ -1,15 +1,10 @@
-#include <cmath>
-#include <cuda_runtime_api.h>
-#include <cuda_runtime.h>
-#include "device_launch_parameters.h"
-#include <cuda.h>
 #include "Renderer.h"
 
 
 struct __align__(16) ModelVertex
 {
-	double4 position;
-	double4 color;
+	float4 position;
+	float4 color;
 };
 
 // Type definitions
@@ -28,39 +23,39 @@ struct __align__(16) TriangleToRasterize
 };
 
 // Auxiliary functions
-__device__ inline double4 projection(double* projection_matrix, double4& vertex) {
-	double projected_x = projection_matrix[0] * vertex.x + projection_matrix[1] * vertex.y + projection_matrix[2] * vertex.z + projection_matrix[3] * vertex.w;
-	double projected_y = projection_matrix[4] * vertex.x + projection_matrix[5] * vertex.y + projection_matrix[6] * vertex.z + projection_matrix[7] * vertex.w;
-	double projected_z = projection_matrix[8] * vertex.x + projection_matrix[9] * vertex.y + projection_matrix[10] * vertex.z + projection_matrix[11] * vertex.w;
-	double projected_w = projection_matrix[12] * vertex.x + projection_matrix[13] * vertex.y + projection_matrix[14] * vertex.z + projection_matrix[15] * vertex.w;
-	return make_double4(projected_x, projected_y, projected_z, projected_w);
+__device__ inline float4 projection(float* projection_matrix, float4& vertex) {
+	float projected_x = projection_matrix[0] * vertex.x + projection_matrix[1] * vertex.y + projection_matrix[2] * vertex.z + projection_matrix[3] * vertex.w;
+	float projected_y = projection_matrix[4] * vertex.x + projection_matrix[5] * vertex.y + projection_matrix[6] * vertex.z + projection_matrix[7] * vertex.w;
+	float projected_z = projection_matrix[8] * vertex.x + projection_matrix[9] * vertex.y + projection_matrix[10] * vertex.z + projection_matrix[11] * vertex.w;
+	float projected_w = projection_matrix[12] * vertex.x + projection_matrix[13] * vertex.y + projection_matrix[14] * vertex.z + projection_matrix[15] * vertex.w;
+	return make_float4(projected_x, projected_y, projected_z, projected_w);
 }
 
 // Main functions
-__device__ bool vertices_ccw_in_screen_space(const double4& v0, const double4& v1, const double4& v2)
+__device__ bool vertices_ccw_in_screen_space(const float4& v0, const float4& v1, const float4& v2)
 {
-	double dx01 = v1.x - v0.x;
-	double dy01 = v1.y - v0.y;
-	double dx02 = v2.x - v0.x;
-	double dy02 = v2.y - v0.y;
+	float dx01 = v1.x - v0.x;
+	float dy01 = v1.y - v0.y;
+	float dx02 = v2.x - v0.x;
+	float dy02 = v2.y - v0.y;
 
 	return (dx01 * dy02 - dy01 * dx02 < 0.0f);
 }
 
-__device__ double2 clip_to_screen_space(const double2& clip_coords, int screen_width, int screen_height)
+__device__ float2 clip_to_screen_space(const float2& clip_coords, int screen_width, int screen_height)
 {
-	const double x_ss = (clip_coords.x + 1.0f) * (screen_width / 2.0f);
-	const double y_ss = screen_height - (clip_coords.y + 1.0f) * (screen_height / 2.0f);
-	return make_double2(x_ss, y_ss);
+	const float x_ss = (clip_coords.x + 1.0f) * (screen_width / 2.0f);
+	const float y_ss = screen_height - (clip_coords.y + 1.0f) * (screen_height / 2.0f);
+	return make_float2(x_ss, y_ss);
 }
 
-__device__ double4 calculate_clipped_bounding_box(double4& v0, double4& v1, double4& v2, int viewport_width, int viewport_height)
+__device__ float4 calculate_clipped_bounding_box(float4& v0, float4& v1, float4& v2, int viewport_width, int viewport_height)
 {
-	int minX = fmax(fmin(floor(v0.x), fmin(floor(v1.x), floor(v2.x))), 0.0);
-	int maxX = fmin(fmax(ceil(v0.x), fmax(ceil(v1.x), ceil(v2.x))), static_cast<double>(viewport_width - 1));
-	int minY = fmax(fmin(floor(v0.y), fmin(floor(v1.y), floor(v2.y))), 0.0);
-	int maxY = fmin(fmax(ceil(v0.y), fmax(ceil(v1.y), ceil(v2.y))), static_cast<double>(viewport_height - 1));
-	return make_double4(minX, minY, maxX - minX, maxY - minY);
+	int minX = fmaxf(fminf(floorf(v0.x), fminf(floorf(v1.x), floorf(v2.x))), 0.0f);
+	int maxX = fminf(fmaxf(ceilf(v0.x), fmaxf(ceilf(v1.x), ceilf(v2.x))), static_cast<float>(viewport_width - 1));
+	int minY = fmaxf(fminf(floorf(v0.y), fminf(floorf(v1.y), floorf(v2.y))), 0.0f);
+	int maxY = fminf(fmaxf(ceilf(v0.y), fmaxf(ceilf(v1.y), ceilf(v2.y))), static_cast<float>(viewport_height - 1));
+	return make_float4(minX, minY, maxX - minX, maxY - minY);
 };
 
 __device__ TriangleToRasterize process_prospective_tri(ModelVertex v0, ModelVertex v1, ModelVertex v2, int viewport_width, int viewport_height, bool enable_backface_culling,
@@ -72,22 +67,22 @@ __device__ TriangleToRasterize process_prospective_tri(ModelVertex v0, ModelVert
 	t.v2 = v2;
 
 	// Only for texturing or perspective texturing:
-	t.one_over_z0 = 1.0 / t.v0.position.w;
-	t.one_over_z1 = 1.0 / t.v1.position.w;
-	t.one_over_z2 = 1.0 / t.v2.position.w;
+	t.one_over_z0 = 1.0 / (double)t.v0.position.w;
+	t.one_over_z1 = 1.0 / (double)t.v1.position.w;
+	t.one_over_z2 = 1.0 / (double)t.v2.position.w;
 
 	// divide by w
-	t.v0.position = make_double4(t.v0.position.x / t.v0.position.w, t.v0.position.y / t.v0.position.w, t.v0.position.z / t.v0.position.w, t.v0.position.w / t.v0.position.w);
-	t.v1.position = make_double4(t.v1.position.x / t.v1.position.w, t.v1.position.y / t.v1.position.w, t.v1.position.z / t.v1.position.w, t.v1.position.w / t.v1.position.w);
-	t.v2.position = make_double4(t.v2.position.x / t.v2.position.w, t.v2.position.y / t.v2.position.w, t.v2.position.z / t.v2.position.w, t.v2.position.w / t.v2.position.w);
+	t.v0.position = make_float4(t.v0.position.x / t.v0.position.w, t.v0.position.y / t.v0.position.w, t.v0.position.z / t.v0.position.w, t.v0.position.w / t.v0.position.w);
+	t.v1.position = make_float4(t.v1.position.x / t.v1.position.w, t.v1.position.y / t.v1.position.w, t.v1.position.z / t.v1.position.w, t.v1.position.w / t.v1.position.w);
+	t.v2.position = make_float4(t.v2.position.x / t.v2.position.w, t.v2.position.y / t.v2.position.w, t.v2.position.z / t.v2.position.w, t.v2.position.w / t.v2.position.w);
 
-	double2 v0_screen = clip_to_screen_space(make_double2(t.v0.position.x, t.v0.position.y), viewport_width, viewport_height);
+	float2 v0_screen = clip_to_screen_space(make_float2(t.v0.position.x, t.v0.position.y), viewport_width, viewport_height);
 	t.v0.position.x = v0_screen.x;
 	t.v0.position.y = v0_screen.y;
-	double2 v1_screen = clip_to_screen_space(make_double2(t.v1.position.x, t.v1.position.y), viewport_width, viewport_height);
+	float2 v1_screen = clip_to_screen_space(make_float2(t.v1.position.x, t.v1.position.y), viewport_width, viewport_height);
 	t.v1.position.x = v1_screen.x;
 	t.v1.position.y = v1_screen.y;
-	double2 v2_screen = clip_to_screen_space(make_double2(t.v2.position.x, t.v2.position.y), viewport_width, viewport_height);
+	float2 v2_screen = clip_to_screen_space(make_float2(t.v2.position.x, t.v2.position.y), viewport_width, viewport_height);
 	t.v2.position.x = v2_screen.x;
 	t.v2.position.y = v2_screen.y;
 
@@ -99,7 +94,7 @@ __device__ TriangleToRasterize process_prospective_tri(ModelVertex v0, ModelVert
 	}
 
 	// Get the bounding box of the triangle:
-	double4 boundingBox = calculate_clipped_bounding_box(t.v0.position, t.v1.position, t.v2.position, viewport_width, viewport_height);
+	float4 boundingBox = calculate_clipped_bounding_box(t.v0.position, t.v1.position, t.v2.position, viewport_width, viewport_height);
 	t.min_x = boundingBox.x;
 	t.max_x = boundingBox.x + boundingBox.z;
 	t.min_y = boundingBox.y;
@@ -114,20 +109,20 @@ __device__ TriangleToRasterize process_prospective_tri(ModelVertex v0, ModelVert
 	return t;
 };
 
-__device__ double implicit_line(double x, double y, const double4& v1, const double4& v2)
+__device__ double implicit_line(float x, float y, const float4& v1, const float4& v2)
 {
-	return (v1.y - v2.y) * x + (v2.x - v1.x) * y + v1.x * v2.y - v2.x * v1.y;
+	return ((double)v1.y - (double)v2.y) * (double)x + ((double)v2.x - (double)v1.x) * (double)y + (double)v1.x * (double)v2.y - (double)v2.x * (double)v1.y;
 };
 
-__device__ void raster_triangle(TriangleToRasterize triangle, unsigned char* color_buffer, int* depth_buffer, double* pixel_bary_coord_buffer, 
+__device__ void raster_triangle(TriangleToRasterize triangle, unsigned char* color_buffer, int* depth_buffer, double* pixel_bary_coord_buffer,
 	int* pixel_triangle_buffer, int* depth_locked, int triangle_index, int width)
 {
 	for (int yi = triangle.min_y; yi <= triangle.max_y; ++yi)
 	{
 		for (int xi = triangle.min_x; xi <= triangle.max_x; ++xi)
 		{
-			const double x = static_cast<double>(xi) + 0.5f;
-			const double y = static_cast<double>(yi) + 0.5f;
+			const float x = static_cast<float>(xi) + 0.5f;
+			const float y = static_cast<float>(yi) + 0.5f;
 
 			// these will be used for barycentric weights computation
 			const double one_over_v0ToLine12 = 1.0 / implicit_line(triangle.v0.position.x, triangle.v0.position.y, triangle.v1.position, triangle.v2.position);
@@ -167,14 +162,14 @@ __device__ void raster_triangle(TriangleToRasterize triangle, unsigned char* col
 						gamma *= d * triangle.one_over_z2;
 
 						// attributes interpolation
-						double red_ = alpha * triangle.v0.color.x + beta * triangle.v1.color.x + gamma * triangle.v2.color.x;
-						double blue_ = alpha * triangle.v0.color.y + beta * triangle.v1.color.y + gamma * triangle.v2.color.y;
-						double green_ = alpha * triangle.v0.color.z + beta * triangle.v1.color.z + gamma * triangle.v2.color.z;
+						double red_ = alpha * static_cast<double>(triangle.v0.color.x) + beta * static_cast<double>(triangle.v1.color.x) + gamma * static_cast<double>(triangle.v2.color.x);
+						double blue_ = alpha * static_cast<double>(triangle.v0.color.y) + beta * static_cast<double>(triangle.v1.color.y) + gamma * static_cast<double>(triangle.v2.color.y);
+						double green_ = alpha * static_cast<double>(triangle.v0.color.z) + beta * static_cast<double>(triangle.v1.color.z) + gamma * static_cast<double>(triangle.v2.color.z);
 
 						// clamp bytes to 255
-						const unsigned char red = static_cast<unsigned char>(255.0f * fmin(red_, 1.0));
-						const unsigned char green = static_cast<unsigned char>(255.0f * fmin(blue_, 1.0));
-						const unsigned char blue = static_cast<unsigned char>(255.0f * fmin(green_, 1.0));
+						const unsigned char red = static_cast<unsigned char>(255.0f * fminf(static_cast<float>(red_), 1.0f));
+						const unsigned char green = static_cast<unsigned char>(255.0f * fminf(static_cast<float>(blue_), 1.0f));
+						const unsigned char blue = static_cast<unsigned char>(255.0f * fminf(static_cast<float>(green_), 1.0f));
 
 						// update buffers
 						color_buffer[index * 3] = blue;
@@ -197,9 +192,9 @@ __device__ void raster_triangle(TriangleToRasterize triangle, unsigned char* col
 	}
 };
 
-__global__ void render_(int* indices_buffer, double* vertex_position_buffer, double* vertex_color_buffer,
+__global__ void render_(int* indices_buffer, float* vertex_position_buffer, float* vertex_color_buffer,
 	unsigned char* color_buffer, int* depth_buffer, double* pixel_bary_coord_buffer, int* pixel_triangle_buffer,
-	double* projection_matrix, int* depth_locked,
+	float* projection_matrix, int* depth_locked,
 	int max_triangle_id,
 	int viewport_width, int viewport_height)
 {
@@ -208,9 +203,9 @@ __global__ void render_(int* indices_buffer, double* vertex_position_buffer, dou
 		ModelVertex vertices[3];
 		for (int i = 0; i < 3; ++i) {
 			int v_id = indices_buffer[3 * triangle_index + i];
-			double4 vertex_position = make_double4(vertex_position_buffer[v_id * 3], vertex_position_buffer[v_id * 3 + 1], vertex_position_buffer[v_id * 3 + 2], 1.f);
+			float4 vertex_position = make_float4(vertex_position_buffer[v_id * 3], vertex_position_buffer[v_id * 3 + 1], vertex_position_buffer[v_id * 3 + 2], 1.f);
 			vertices[i].position = projection(projection_matrix, vertex_position);
-			vertices[i].color = make_double4(vertex_color_buffer[v_id * 3], vertex_color_buffer[v_id * 3 + 1], vertex_color_buffer[v_id * 3 + 2], 1.f);
+			vertices[i].color = make_float4(vertex_color_buffer[v_id * 3], vertex_color_buffer[v_id * 3 + 1], vertex_color_buffer[v_id * 3 + 2], 1.f);
 		}
 
 		TriangleToRasterize triangles_to_raster;
@@ -219,10 +214,10 @@ __global__ void render_(int* indices_buffer, double* vertex_position_buffer, dou
 		{
 			visibility_bits[k] = 0;
 
-			double x_cc = vertices[k].position.x;
-			double y_cc = vertices[k].position.y;
-			double z_cc = vertices[k].position.z;
-			double w_cc = vertices[k].position.w;
+			float x_cc = vertices[k].position.x;
+			float y_cc = vertices[k].position.y;
+			float z_cc = vertices[k].position.z;
+			float w_cc = vertices[k].position.w;
 
 			if (x_cc < -w_cc)
 				visibility_bits[k] |= 1;
@@ -251,7 +246,87 @@ __global__ void render_(int* indices_buffer, double* vertex_position_buffer, dou
 	}
 }
 
-std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> render(Face & face, Matrix4d projectionMatrix, int height, int width) {
+__global__ void compute_face(float *vertices, float* colors,
+	float* mean_shape, float* var_shape, float* weight_shape,
+	float* mean_exp, float* var_exp, float* weight_exp,
+	float* mean_color, float* var_color, float* weight_color,
+	int num_eigen_vectors_shape, int num_eigen_vectors_exp, int num_eigen_vectors_color,
+	int max_length) 
+{
+	int id = blockIdx.x * blockDim.x + threadIdx.x;
+	if (id < max_length) {
+		vertices[id] = mean_shape[id] + mean_exp[id];
+		for (int i = 0; i < num_eigen_vectors_shape; ++i) {
+			vertices[id] += weight_shape[i] * var_shape[id + i * max_length];
+		}
+		for (int i = 0; i < num_eigen_vectors_exp; ++i) {
+			vertices[id] += weight_exp[i] * var_exp[id + i * max_length];
+		}
+		colors[id] = mean_color[id];
+		for (int i = 0; i < num_eigen_vectors_color; ++i) {
+			colors[id] += weight_color[i] * var_color[id + i * max_length];
+		}
+	}
+}
+
+
+void Renderer::render(Face& face, Matrix4f projectionMatrix) {
+	VectorXf alpha = face.getAlpha().cast<float>();
+	VectorXf beta = face.getBeta().cast<float>();
+	VectorXf gamma = face.getGamma().cast<float>();
+	
+	float* device_alpha, * device_beta, * device_gamma;
+
+	cudaMallocAsync((void**)&device_alpha, alpha.rows() * sizeof(float), streams[0]);
+	cudaMallocAsync((void**)&device_beta, beta.rows() * sizeof(float), streams[1]);
+	cudaMallocAsync((void**)&device_gamma, gamma.rows() * sizeof(float), streams[2]);
+	cudaDeviceSynchronize();
+
+	cudaMemcpyAsync(device_projection, projectionMatrix.data(), 16 * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpyAsync(device_alpha, alpha.data(), alpha.rows() * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpyAsync(device_beta, beta.data(), beta.rows() * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpyAsync(device_gamma, gamma.data(), gamma.rows() * sizeof(float), cudaMemcpyHostToDevice);
+	cudaDeviceSynchronize();
+
+	int block_size = 256;
+	int grid_size = int(3 * face.getFaceModel().getNumVertices() / block_size) + 1;
+
+	compute_face<<<grid_size, block_size>>>(device_vertices, device_colors,
+		device_model_shape_mean, device_model_shape_var, device_alpha,
+		device_model_exp_mean, device_model_exp_var, device_gamma,
+		device_model_color_mean, device_model_color_var, device_beta,
+		alpha.rows(), gamma.rows(), beta.rows(),
+		3 * face.getFaceModel().getNumVertices());
+	cudaDeviceSynchronize();
+
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+
+	cudaEventRecord(start);
+
+	block_size = 256;
+	grid_size = int(face.getFaceModel().getTriangulation().rows() / block_size) + 1;
+	render_<<<grid_size, block_size>>> (device_triangles, device_vertices, device_colors, device_rendered_color,
+		device_depth, device_bary_centric, device_pixel_triangle, device_projection, device_depth_locked, face.getFaceModel().getTriangulation().rows(), viewport_width, viewport_height);
+	cudaDeviceSynchronize();
+	
+	cudaEventRecord(stop);
+	cudaEventSynchronize(stop);
+	float milliseconds = 0;
+	cudaEventElapsedTime(&milliseconds, start, stop);
+	std::string time = std::to_string(milliseconds);
+	std::printf(time.c_str());
+
+	cudaMemcpyAsync(color_img.data, device_rendered_color, viewport_height * viewport_width * 3 * sizeof(unsigned char), cudaMemcpyDeviceToHost);
+	cudaMemcpyAsync(depth_img.data, device_depth, viewport_height * viewport_width * sizeof(int), cudaMemcpyDeviceToHost);
+	cudaMemcpyAsync(pixel_bary_coord_buffer.data, device_bary_centric, viewport_height * viewport_width * 3 * sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpyAsync(pixel_triangle_buffer.data, device_pixel_triangle, viewport_height * viewport_width * sizeof(int), cudaMemcpyDeviceToHost);
+	cudaDeviceSynchronize();
+}
+
+/*
+std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> render__(Face& face, Matrix4d projectionMatrix, int height, int width) {
 	VectorXd vertices = face.calculateVerticesDefault();
 	VectorXd colors = face.calculateColorsDefault();
 	MatrixXi triangles = face.getFaceModel().getTriangulation().transpose();
@@ -338,4 +413,4 @@ std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> render(Face & face, Matrix4d proj
 	}
 	cudaDeviceSynchronize();
 	return std::tuple(color_img, depth_img, pixel_bary_coord_buffer, pixel_triangle_buffer);
-}
+}*/

@@ -12,6 +12,7 @@ int taskOption = -1;
 // vector<string> inputOptions{ "Use sample image(s)" };
 // int inputOption = -1;
 
+Renderer Renderer::s_instance;
 
 void handleMenu() {
 	cout << "Please select a task:\n";
@@ -59,8 +60,11 @@ void performTask() {
 	}
 	case 3:
 	{
+		auto& renderer = Renderer::Get();
 		Face face;
 		face.randomizeParameters();
+		renderer.initialiaze_rendering_context(face.getFaceModel(), 720, 720);
+
 		// Initialize the default projection matrix which moves the face to origin
 		double scale_factor = 1 / 100.;
 		MatrixXd coords = face.calculateVerticesDefault().reshaped(3, face.getFaceModel().getNumVertices()).transpose();
@@ -70,14 +74,16 @@ void performTask() {
 		projection_matrix(3, 3) = 1.;
 		
 		const auto start = std::chrono::steady_clock::now();
-		std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> buffers = render(face, projection_matrix.transpose(), 720, 720);
+		renderer.render(face, projection_matrix.transpose().cast<float> ());
 		const auto end = std::chrono::steady_clock::now();
 		std::cout << "time used: " << std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()) << "ms\n";
 
 		cv::Mat depth_to_visualize;
-		cv::normalize(std::get<1>(buffers), depth_to_visualize, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+		cv::normalize(renderer.get_depth_buffer(), depth_to_visualize, 0, 255, cv::NORM_MINMAX, CV_8UC1);
 		cv::imwrite("../../data/samples/2d face image/sample_image_depth.png", depth_to_visualize);
-		cv::imwrite("../../data/samples/2d face image/sample_image.png", std::get<0>(buffers));
+		cv::imwrite("../../data/samples/2d face image/sample_image.png", renderer.get_color_buffer());
+
+		renderer.terminate_rendering_context();
 		break;
 	}
 	default:
