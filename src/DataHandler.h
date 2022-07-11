@@ -91,7 +91,7 @@ public:
 		}
 	}
 	// read basis from hdf5 file
-	static void readBasis(std::string faceModelName, std::string basisName, MatrixXf& basis) {
+	static void readBasis(std::string faceModelName, std::string basisName, MatrixXd& basis) {
 		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP.at(faceModelName).c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
 		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP.at(std::make_pair(basisName, "basis")).c_str(), H5P_DEFAULT);
 		if (h5d < 0) std::cerr << "Error reading basis from: " << faceModelName << std::endl;
@@ -106,7 +106,7 @@ public:
 
 	}
 	// read mean from hdf5 file
-	static void readMean(std::string faceModelName, std::string meanName, VectorXf& mean) {
+	static void readMean(std::string faceModelName, std::string meanName, VectorXd& mean) {
 		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP.at(faceModelName).c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
 		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP.at(std::make_pair(meanName, "mean")).c_str(), H5P_DEFAULT);
 		if (h5d < 0) std::cerr << "Error reading mean from: " << faceModelName << std::endl;
@@ -118,7 +118,7 @@ public:
 		H5Fclose(h5file);
 	}
 	// read variance from hdf5 file
-	static void readVariance(std::string faceModelName, std::string varianceName, VectorXf& variance) {
+	static void readVariance(std::string faceModelName, std::string varianceName, VectorXd& variance) {
 		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP.at(faceModelName).c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
 		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP.at(std::make_pair(varianceName, "variance")).c_str(), H5P_DEFAULT);
 		if (h5d < 0) std::cerr << "Error reading variance from: " << faceModelName << std::endl;

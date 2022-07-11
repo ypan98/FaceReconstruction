@@ -59,16 +59,15 @@ void performTask() {
 	}
 	case 3:
 	{
-		float scale_factor = 1 / 100.f;
 		Face face;
 		face.randomizeParameters();
 		// Initialize the default projection matrix which moves the face to origin
-		float scale_factor = 1 / 100.f;
-		MatrixXf coords = face.calculateVerticesDefault().reshaped(3, face.getFaceModel().getNumVertices()).transpose().cast<float>();
-		Vector3f mean = coords.colwise().mean();
-		Matrix4f projection_matrix = Matrix4f::Identity() * scale_factor;
+		double scale_factor = 1 / 100.;
+		MatrixXd coords = face.calculateVerticesDefault().reshaped(3, face.getFaceModel().getNumVertices()).transpose();
+		Vector3d mean = coords.colwise().mean();
+		Matrix4d projection_matrix = Matrix4d::Identity() * scale_factor;
 		projection_matrix.block(0, 3, 3, 1) = -mean * scale_factor;
-		projection_matrix(3, 3) = 1.f;
+		projection_matrix(3, 3) = 1.;
 		
 		const auto start = std::chrono::steady_clock::now();
 		std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> buffers = render(face, projection_matrix.transpose(), 720, 720);
