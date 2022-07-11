@@ -29,9 +29,9 @@ public:
 
 	// Randomize parameters (for testing purpose)
 	void randomizeParameters(double scaleAlpha = 1, double scaleBeta = 1, double scaleGamma = 1) {
-		alpha = VectorXd::Random(faceModel.getAlphaSize()).cwiseAbs() * -scaleAlpha;
-		beta = VectorXd::Random(faceModel.getBetaSize()).cwiseAbs() * -scaleBeta;
-		gamma = VectorXd::Random(faceModel.getGammaSize()).cwiseAbs() * -scaleGamma;
+		alpha = VectorXd::Random(faceModel.getAlphaSize()) * scaleAlpha;
+		beta = VectorXd::Random(faceModel.getBetaSize()) * scaleBeta;
+		gamma = VectorXd::Random(faceModel.getGammaSize()) * scaleGamma;
 	}
 
 	// construct the mesh with alpha, beta, gamma and face model variables
@@ -83,14 +83,14 @@ public:
 	}
 	// geometry
 	MatrixX3d calculateVertices() {
-		MatrixXd vertices = faceModel.getShapeMean() + faceModel.getShapeBasisStdMultiplied() * alpha +
-			faceModel.getExpMean() + faceModel.getExpBasisStdMultiplied() * gamma;
+		MatrixXd vertices = faceModel.getShapeMean() + faceModel.getShapeBasis() * alpha +
+			faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
 		vertices.resize(3, faceModel.getNumVertices());
 		return vertices.transpose();
 	}
 	// color
 	MatrixX3d calculateColors() {
-		MatrixXd colors = faceModel.getColorMean() + faceModel.getColoBasisStdMultiplied() * beta;
+		MatrixXd colors = faceModel.getColorMean() + faceModel.getColorBasis() * beta;
 		colors.resize(3, faceModel.getNumVertices());
 		return colors.transpose();
 	}

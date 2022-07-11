@@ -2,9 +2,8 @@
 #include "Eigen.h"
 #include <ceres/rotation.h>
 
-
 /**
- * Copied from Ex. 5 of IN2354. A wrapper class for the 4x4 transformation in a 6x1 se(3) form.
+ * Part of the code copied from Ex. 5 of IN2354. A wrapper class for the 4x4 transformation in a 6x1 se(3) form.
  * Pose increment is only an interface to the underlying array (in constructor, no copy
  * of the input array is made).
  * Important: Input array needs to have a size of at least 6.
@@ -64,6 +63,17 @@ public:
         matrix(1, 0) = rotationMatrix[1];	matrix(1, 1) = rotationMatrix[4];	matrix(1, 2) = rotationMatrix[7];	matrix(1, 3) = translation[1];
         matrix(2, 0) = rotationMatrix[2];	matrix(2, 1) = rotationMatrix[5];	matrix(2, 2) = rotationMatrix[8];	matrix(2, 3) = translation[2];
         return matrix;
+    }
+
+    static void extrinsicsMatTo6DoG(const Matrix4d& extrinsics, double* res) {
+        Matrix3d mat = extrinsics.block(0, 0, 3, 3);
+        Vector3d eulerAngles = mat.eulerAngles(0, 1, 2);
+        res[0] = eulerAngles(0);
+        res[1] = eulerAngles(1);
+        res[2] = eulerAngles(2);
+        res[3] = extrinsics(0, 3);
+        res[4] = extrinsics(1, 3);
+        res[5] = extrinsics(2, 3);
     }
 
 private:

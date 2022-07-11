@@ -35,10 +35,10 @@ void performTask() {
 	{
 		// reconstruct face
 		Face sourceFace = Face("sample1", "BFM17");
-		// randomize for testing
 		optimizer.optimize(sourceFace);
 		// write out mesh
 		sourceFace.writeReconstructedFace();
+		// debug prints
 		cout << sourceFace.getAlpha() << endl;
 		cout << sourceFace.getExtrinsics() << endl;
 		cout << sourceFace.getIntrinsics() << endl;

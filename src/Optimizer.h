@@ -3,6 +3,7 @@
 #include <ceres/rotation.h>
 #include "Face.h"
 #include "PoseIncrement.h"
+#include "Projection.h"
 #include <stdio.h>
 
 using namespace std;
@@ -22,33 +23,35 @@ public:
     { }
 
     template <typename T>
-    bool operator()(const T const* alpha, const T const* gamma, const T* const poseFormatExtrinsics, const T const* intrinsics, T* residuals) const {
-        // ************* USING EIGEN (doesnt even compile) *************??
-        /*Map<const Matrix<T, Dynamic, 1>> constAlphaMap(alpha, BFM_ALPHA_SIZE);
-        Map<const Matrix<T, Dynamic, 1>> constGammaMap(gamma, BFM_GAMMA_SIZE);
-        Vector3d vertex = ((*faceModel).getShapeMean().block(3 * vertexIdx, 0, 3, 1)
-            + (*faceModel).getExpMean().block(3 * vertexIdx, 0, 3, 1)) 
-            + (*faceModel).getShapeBasisStdDivided().middleRows(3 * vertexIdx, 3) * constAlphaMap
-            + (*faceModel).getExpBasisStdDivided().middleRows(3 * vertexIdx, 3) * constGammaMap;*/
+    bool operator()(const T const* alpha, const T const* gamma, const T* const extrinsicsArr, const T const* intrinsicsArr, T* residuals) const {
+        // ************* USING EIGEN (very slow...) ***************
+        Map<const Matrix<T, -1, 1> > alphaMap(alpha, BFM_ALPHA_SIZE);
+        Map<const Matrix<T, -1, 1> > gammaMap(gamma, BFM_GAMMA_SIZE);
+        // calculate vertex
+        Matrix<T, -1, -1> vertex = (*faceModel).getShapeMeanBlock(3 * vertexIdx, 3).cast<T>()
+            + (*faceModel).getExpMeanBlock(3 * vertexIdx, 3).cast<T>()
+            + (*faceModel).getShapeBasisRowBlock(3 * vertexIdx, 3) * alphaMap
+            + (*faceModel).getExpBasisRowBlock(3 * vertexIdx, 3) * gammaMap;
 
         // ************* MAKING CALCULATIONS WITH LOOP *************
-        T vertex[3];
-        // mean
-        for (unsigned i = 0; i < 3; i++) vertex[i] = T((*faceModel).getShapeMeanElem(3 * vertexIdx + i)) + T((*faceModel).getExpMeanElem(3 * vertexIdx + i));
-        // shape basis
-        for (unsigned i = 0; i < BFM_ALPHA_SIZE; i++) 
-            for (unsigned j = 0; j < 3; j++) vertex[j] += T((*faceModel).getShapeBasisStdMultipliedElem(3*vertexIdx + j, i)) * alpha[i];
-        // expression basis
-        for (unsigned i = 0; i < BFM_GAMMA_SIZE; i++)
-            for (unsigned j = 0; j < 3; j++) vertex[j] += T((*faceModel).getExpBasisStdMultipliedElem(3*vertexIdx + j, i)) * gamma[i];
+        //T vertex[3];
+        //// mean
+        //for (unsigned i = 0; i < 3; i++) vertex[i] = T((*faceModel).getShapeMeanElem(3 * vertexIdx + i)) + T((*faceModel).getExpMeanElem(3 * vertexIdx + i));
+        //// shape basis
+        //for (unsigned i = 0; i < BFM_ALPHA_SIZE; i++) 
+        //    for (unsigned j = 0; j < 3; j++) vertex[j] += T((*faceModel).getShapeBasisElem(3*vertexIdx + j, i)) * alpha[i];
+        //// expression basis
+        //for (unsigned i = 0; i < BFM_GAMMA_SIZE; i++)
+        //    for (unsigned j = 0; j < 3; j++) vertex[j] += T((*faceModel).getExpBasisElem(3*vertexIdx + j, i)) * gamma[i];
+
         // apply pose (extrinsics)
         T vertex_transformed[3];
-        PoseIncrement<T> pose_inc(const_cast<T* const>(poseFormatExtrinsics));
-        pose_inc.apply(vertex, vertex_transformed);
-        // apply intrinsics and divide by z
+        PoseIncrement<T> pose_inc(const_cast<T* const>(extrinsicsArr));
+        pose_inc.apply(vertex.data(), vertex_transformed);
+        // apply projection (instrinsics)
         T vertex_pixel_coord[2];
-        vertex_pixel_coord[0] = (intrinsics[0] * vertex_transformed[0] + intrinsics[2] * vertex_transformed[2])/ vertex_transformed[2];
-        vertex_pixel_coord[1] = (intrinsics[1] * vertex_transformed[1] + intrinsics[3] * vertex_transformed[2])/ vertex_transformed[2];
+        Projection<T> proj(const_cast<T* const>(intrinsicsArr));
+        proj.apply(vertex_transformed, vertex_pixel_coord);
         residuals[0] = (T(landmark(0)) - vertex_pixel_coord[0])*T(landmarkWeight);
         residuals[1] = (T(landmark(1)) - vertex_pixel_coord[1])*T(landmarkWeight);
         return true;
@@ -94,26 +97,25 @@ public:
     void optimize(Face& face) {
         // PREPARATION
         ceres::Problem problem;
-        double pose[6] = {0};
-        extrinsicsMatTo6DoG(face.getExtrinsics(), pose);
-        PoseIncrement poseIncrement = PoseIncrement<double>(pose);
+        // wrapped extrinsics, intrinsics. With 4 and 6 degrees of freedom respectively
+        double poseArr[6]; // reserve space
+        PoseIncrement<double>::extrinsicsMatTo6DoG(face.getExtrinsics(), poseArr);
+        PoseIncrement poseIncrement = PoseIncrement<double>(poseArr);
+        double projArr[4];   // reserve space
+        Projection<double>::intrinsicsMatTo4DoG(face.getIntrinsics(), projArr);
+        Projection projection = Projection<double>(projArr);
         Image img = face.getImage();
         FaceModel faceModel = face.getFaceModel();
         VectorXd alpha = face.getAlpha();
         VectorXd beta = face.getBeta();
         VectorXd gamma = face.getGamma();
-        double intrinsics[4];   // for the intrinsics, we only need fx,fy,mx,my. Assuming distortion=0
-        intrinsics[0] = face.getIntrinsics()(0,0);
-        intrinsics[1] = face.getIntrinsics()(1,1);
-        intrinsics[2] = face.getIntrinsics()(0,2);
-        intrinsics[3] = face.getIntrinsics()(1,2);
         unsigned numLandmarks = face.getFaceModel().getNumLandmarks();
         // LANDMARK TERM
         for (unsigned i = 0; i < numLandmarks; i++) 
             problem.AddResidualBlock(
                 new ceres::AutoDiffCostFunction<FeatureSimilarityEnergy, 2, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6, 4>
                 (new FeatureSimilarityEnergy(landmarkWeight, img.getLandmark(i), &faceModel, faceModel.getLandmarkVertexIdx(i))),
-                nullptr, alpha.data(), gamma.data(), poseIncrement.getData(), intrinsics
+                nullptr, alpha.data(), gamma.data(), poseIncrement.getData(), projection.getData()
             );
         // REGULARIZATION TERM
         problem.AddResidualBlock(
@@ -137,7 +139,8 @@ public:
         // ...
         // SOLVE OPTIMIZATION
         ceres::Solver::Options options;
-        options.linear_solver_type = ceres::DENSE_QR;
+        options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+        // options.preconditioner_type = ceres::JACOBI;
         options.num_threads = 16;
         options.minimizer_progress_to_stdout = true;
         ceres::Solver::Summary summary;
@@ -146,31 +149,11 @@ public:
         // UPDATE PARAMS
         face.setAlpha(alpha);
         face.setGamma(gamma);
+        face.setBeta(beta);
         face.setExtrinsics(PoseIncrement<double>::convertToMatrix(poseIncrement));
-        face.setIntrinsics(constructInstrinsicsMat(intrinsics));
+        face.setIntrinsics(Projection<double>::convertToMatrix(projection));
     }
 
 private:
     double landmarkWeight, shapeRegWeight, expRegWeight, colorRegWeight;
-
-    void extrinsicsMatTo6DoG(const Matrix4d& extrinsics, double* res) {
-        Matrix3d mat = extrinsics.block(0, 0, 3, 3);
-        Vector3d eulerAngles = mat.eulerAngles(0, 1, 2);
-        res[0] = eulerAngles(0);
-        res[1] = eulerAngles(1);
-        res[2] = eulerAngles(2);
-        res[3] = extrinsics(0, 3);
-        res[4] = extrinsics(1, 3);
-        res[5] = extrinsics(2, 3);
-    }
-
-    Matrix3d constructInstrinsicsMat(double* intrinsics) {
-        Matrix3d matIntrinsics = Matrix3d::Zero();
-        matIntrinsics(0, 0) = intrinsics[0];
-        matIntrinsics(1, 1) = intrinsics[1];
-        matIntrinsics(0, 2) = intrinsics[2];
-        matIntrinsics(1, 2) = intrinsics[3];
-        matIntrinsics(2, 2) = 1.0;
-        return matIntrinsics;
-    }
 };

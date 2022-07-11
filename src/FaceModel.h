@@ -3,7 +3,7 @@
 
 #define BFM_ALPHA_SIZE 199
 #define BFM_BETA_SIZE 199
-#define BFM_GAMMA_SIZE 99
+#define BFM_GAMMA_SIZE 100
 
 // Class for a face model
 class FaceModel{
@@ -24,6 +24,7 @@ public:
 		DataHandler::readVariance(_faceModel, "expression", expVar);
 		DataHandler::readTriangulation(_faceModel, triangulation);
 		DataHandler::readFaceModelLandmarks(_faceModel, landmarks);
+		updateBasisWithStd();
 	}
 
 	std::string getFaceModelName() {
@@ -49,6 +50,10 @@ public:
 		return shapeMean;
 	}
 
+	VectorXd getShapeMeanBlock(unsigned startRow, unsigned numRows) const {
+		return shapeMean.block(startRow, 0, numRows, 1);
+	}
+
 	double getShapeMeanElem(unsigned idx) const {
 		return shapeMean(idx, 0);
 	}
@@ -57,12 +62,20 @@ public:
 		return colorMean;
 	}
 
+	VectorXd getColorMeanBlock(unsigned startRow, unsigned numRows) const {
+		return colorMean.block(startRow, 0, numRows, 1);
+	}
+
 	double getColorMeanElem(unsigned idx) const {
 		return colorMean(idx, 0);
 	}
 
 	VectorXd getExpMean() const {
 		return expMean;
+	}
+
+	VectorXd getExpMeanBlock(unsigned startRow, unsigned numRows) const {
+		return expMean.block(startRow, 0, numRows, 1);
 	}
 
 	double getExpMeanElem(unsigned idx) const {
@@ -85,36 +98,36 @@ public:
 		return shapeBasis;
 	}
 
-	MatrixXd getShapeBasisStdMultiplied() const {
-		return (shapeVar.cwiseSqrt().asDiagonal() * shapeBasis.transpose()).transpose();
+	MatrixXd getShapeBasisRowBlock(unsigned startRow, unsigned numRows) const {
+		return shapeBasis.middleRows(startRow,  numRows);
 	}
 
-	double getShapeBasisStdMultipliedElem(unsigned i, unsigned j) const {
-		return shapeBasis(i, j) * sqrt(shapeVar(j, 0));
+	double getShapeBasisElem(unsigned i, unsigned j) const {
+		return shapeBasis(i, j);
 	}
 
 	MatrixXd getColorBasis() const {
 		return colorBasis;
 	}
 
-	MatrixXd getColoBasisStdMultiplied() const {
-		return (colorVar.cwiseSqrt().asDiagonal() * colorBasis.transpose()).transpose();
+	MatrixXd getColorBasisRowBlock(unsigned startRow, unsigned numRows) const {
+		return colorBasis.middleRows(startRow, numRows);
 	}
 
-	double getColoBasisStdMultipliedElem(unsigned i, unsigned j) const {
-		return colorBasis(i, j) * sqrt(colorVar(j, 0));
+	double getColorBasisElem(unsigned i, unsigned j) const {
+		return colorBasis(i, j);
 	}
 
 	MatrixXd getExpBasis() const {
 		return expBasis;
 	}
 
-	MatrixXd getExpBasisStdMultiplied() const {
-		return (expVar.cwiseSqrt().asDiagonal() * expBasis.transpose()).transpose();
+	MatrixXd getExpBasisRowBlock(unsigned startRow, unsigned numRows) const {
+		return expBasis.middleRows(startRow, numRows);
 	}
 
-	double getExpBasisStdMultipliedElem(unsigned i, unsigned j) const {
-		return expBasis(i, j) * sqrt(expVar(j, 0));
+	double getExpBasisElem(unsigned i, unsigned j) const {
+		return expBasis(i, j);
 	}
 
 	MatrixX3i getTriangulation() const {
@@ -133,16 +146,23 @@ public:
 		return landmarks.row(i).value();
 	}
 
-//private:
+private:
   std::string faceModelName;
   // Mean of the eigenvectors in the basis. Shape = 3*num_vertices (because each vertex is a 3D point)
   VectorXd shapeMean, colorMean, expMean;
   // Variance of the eigenvectors in the basis. Shape = num_eigenvectors
   VectorXd shapeVar, colorVar, expVar;
   // Basis formed by the eigvectors. Shape = [3*num_vectices, num_eigenvectors]
-  MatrixXd shapeBasis, colorBasis, expBasis;
+  MatrixXd shapeBasis, colorBasis, expBasis;	// note that the basis stored after the initialization in  the constructor already has the std multiplied
   // triangulation of the vertices. Shape = [num_faces, 3]
   MatrixX3i triangulation;
   // vector with index of the vertices corresponding to the facial landmarks. Shape = [68, 1]
   VectorXi landmarks;
+
+  // update the basis with its corresponding std and update the stored variables
+  void updateBasisWithStd() {
+	  shapeBasis = (shapeVar.cwiseSqrt().asDiagonal() * shapeBasis.transpose()).transpose();
+	  colorBasis = (colorVar.cwiseSqrt().asDiagonal() * colorBasis.transpose()).transpose();
+	  expBasis = (expVar.cwiseSqrt().asDiagonal() * expBasis.transpose()).transpose();
+  }
 };
