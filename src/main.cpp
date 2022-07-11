@@ -1,4 +1,4 @@
-#include<iostream>
+#include <iostream>
 #include "Optimizer.h"
 #include "Face.h"
 #include "Renderer.h"
@@ -36,10 +36,12 @@ void performTask() {
 		// reconstruct face
 		Face sourceFace = Face("sample1", "BFM17");
 		// randomize for testing
-		sourceFace.randomizeParameters(1,1,1);
 		optimizer.optimize(sourceFace);
 		// write out mesh
 		sourceFace.writeReconstructedFace();
+		cout << sourceFace.getAlpha() << endl;
+		cout << sourceFace.getExtrinsics() << endl;
+		cout << sourceFace.getIntrinsics() << endl;
 		break;
 	}
 	case 2:
@@ -60,7 +62,9 @@ void performTask() {
 		float scale_factor = 1 / 100.f;
 		Face face;
 		face.randomizeParameters();
-		MatrixXf coords = face.calculateVerticesDefault().reshaped(3, face.getFaceModel().getNumVertices()).transpose();
+		// Initialize the default projection matrix which moves the face to origin
+		float scale_factor = 1 / 100.f;
+		MatrixXf coords = face.calculateVerticesDefault().reshaped(3, face.getFaceModel().getNumVertices()).transpose().cast<float>();
 		Vector3f mean = coords.colwise().mean();
 		Matrix4f projection_matrix = Matrix4f::Identity() * scale_factor;
 		projection_matrix.block(0, 3, 3, 1) = -mean * scale_factor;
@@ -83,7 +87,8 @@ void performTask() {
 }
 
 
-int main() {
+int main(int argc, char** argv) {
+	google::InitGoogleLogging(argv[0]);
 	handleMenu();
 	performTask();
 	return 0;

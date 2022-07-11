@@ -32,6 +32,7 @@
 #include <unsupported/Eigen/NonLinearOptimization>
 #include <Eigen/Sparse>
 #include <Eigen/SparseCholesky>
+#include <Eigen/Geometry> 
 
 typedef Eigen::Matrix<unsigned char, 4, 1> Vector4uc;
 
@@ -44,6 +45,14 @@ EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(Eigen::VectorXf)
 EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(Eigen::Matrix4f)
 EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(Eigen::MatrixXf)
 EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(Eigen::Quaternionf)
+
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(Eigen::Vector2d)
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(Eigen::Vector3d)
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(Eigen::Vector4d)
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(Eigen::VectorXd)
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(Eigen::Matrix4d)
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(Eigen::MatrixXd)
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(Eigen::Quaterniond)
 
 
 

@@ -9,11 +9,11 @@ public:
 	Face(std::string _imageFileName = "sample1", std::string _faceModel = "BFM17") {
 		image = Image(_imageFileName);
 		faceModel = FaceModel(_faceModel);		
-		alpha = VectorXf::Zero(faceModel.getAlphaSize());
-		beta = VectorXf::Zero(faceModel.getBetaSize());
-		gamma = VectorXf::Zero(faceModel.getGammaSize());
-		intrinsics = Matrix3f::Identity();
-		extrinsics = Matrix4f::Identity();
+		alpha = VectorXd::Zero(faceModel.getAlphaSize());
+		beta = VectorXd::Zero(faceModel.getBetaSize());
+		gamma = VectorXd::Zero(faceModel.getGammaSize());
+		intrinsics = Matrix3d::Identity();
+		extrinsics = Matrix4d::Identity();
 	}
 
 	// Calls DataHandler to write the recontructed mesh in .obj format
@@ -28,10 +28,10 @@ public:
 	}
 
 	// Randomize parameters (for testing purpose)
-	void randomizeParameters(float scaleAlpha = 1, float scaleBeta = 1, float scaleGamma = 1) {
-		alpha = VectorXf::Random(faceModel.getAlphaSize()) * scaleAlpha;
-		beta = VectorXf::Random(faceModel.getBetaSize()) * scaleBeta;
-		gamma = VectorXf::Random(faceModel.getGammaSize()) * scaleGamma;
+	void randomizeParameters(double scaleAlpha = 1, double scaleBeta = 1, double scaleGamma = 1) {
+		alpha = VectorXd::Random(faceModel.getAlphaSize()).cwiseAbs() * -scaleAlpha;
+		beta = VectorXd::Random(faceModel.getBetaSize()).cwiseAbs() * -scaleBeta;
+		gamma = VectorXd::Random(faceModel.getGammaSize()).cwiseAbs() * -scaleGamma;
 	}
 
 	// construct the mesh with alpha, beta, gamma and face model variables
@@ -45,34 +45,34 @@ public:
 
 	// getters and setters
 
-	void setAlpha(VectorXf _alpha) {
+	void setAlpha(VectorXd _alpha) {
 		alpha = _alpha;
 	}
-	VectorXf getAlpha() {
+	VectorXd getAlpha() {
 		return alpha;
 	}
-	void setBeta(VectorXf _beta) {
+	void setBeta(VectorXd _beta) {
 		beta = _beta;
 	}
-	VectorXf getBeta() {
+	VectorXd getBeta() {
 		return beta;
 	}
-	void setGamma(VectorXf _gamma) {
+	void setGamma(VectorXd _gamma) {
 		gamma = _gamma;
 	}
-	VectorXf getGamma() {
+	VectorXd getGamma() {
 		return gamma;
 	}
-	void setIntrinsics(Matrix3f _intrinsics) {
+	void setIntrinsics(Matrix3d _intrinsics) {
 		intrinsics = _intrinsics;
 	}
-	Matrix3f getIntrinsics() {
+	Matrix3d getIntrinsics() {
 		return intrinsics;
 	}
-	void setExtrinsics(Matrix4f _extrinsics) {
+	void setExtrinsics(Matrix4d _extrinsics) {
 		extrinsics = _extrinsics;
 	}
-	Matrix4f getExtrinsics() {
+	Matrix4d getExtrinsics() {
 		return extrinsics;
 	}
 	Image getImage() {
@@ -82,34 +82,32 @@ public:
 		return faceModel;
 	}
 	// geometry
-	MatrixX3f calculateVertices() {
-		/*MatrixXf vertices = faceModel.getShapeMean() + faceModel.getShapeBasis() * (faceModel.getShapeVar().cwiseSqrt().cwiseProduct(alpha)) + 
-			faceModel.getExpMean() + faceModel.getExpBasis()*(faceModel.getExpVar().cwiseSqrt().cwiseProduct(gamma));*/
-		MatrixXf vertices = faceModel.getShapeMean() + ((faceModel.getShapeVar().cwiseSqrt().asDiagonal() * faceModel.getShapeBasis().transpose()).transpose()) * alpha +
-			faceModel.getExpMean() + ((faceModel.getExpVar().cwiseSqrt().asDiagonal() * faceModel.getExpBasis().transpose()).transpose()) * gamma;
+	MatrixX3d calculateVertices() {
+		MatrixXd vertices = faceModel.getShapeMean() + faceModel.getShapeBasisStdMultiplied() * alpha +
+			faceModel.getExpMean() + faceModel.getExpBasisStdMultiplied() * gamma;
 		vertices.resize(3, faceModel.getNumVertices());
 		return vertices.transpose();
 	}
 	// color
-	MatrixX3f calculateColors() {
-		//MatrixXf colors = faceModel.getColorMean() + faceModel.getColorBasis()*(faceModel.getColorVar().cwiseSqrt().cwiseProduct(beta));
-		MatrixXf colors = faceModel.getColorMean() + ((faceModel.getColorVar().cwiseSqrt().asDiagonal() * faceModel.getColorBasis().transpose()).transpose()) * beta;
+	MatrixX3d calculateColors() {
+		MatrixXd colors = faceModel.getColorMean() + faceModel.getColoBasisStdMultiplied() * beta;
 		colors.resize(3, faceModel.getNumVertices());
 		return colors.transpose();
 	}
 
-	VectorXf calculateVerticesDefault() {
-		return faceModel.getShapeMean() + faceModel.getShapeBasis() * alpha + faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
+	VectorXd calculateVerticesDefault() {
+		return faceModel.getShapeMean() + ((faceModel.getShapeVar().cwiseSqrt().asDiagonal() * faceModel.getShapeBasis().transpose()).transpose()) * alpha +
+			faceModel.getExpMean() + ((faceModel.getExpVar().cwiseSqrt().asDiagonal() * faceModel.getExpBasis().transpose()).transpose()) * gamma;
 	}
 
-	VectorXf calculateColorsDefault() {
-		return faceModel.getColorMean() + faceModel.getColorBasis() * beta;
+	VectorXd calculateColorsDefault() {
+		return faceModel.getColorMean() + ((faceModel.getColorVar().cwiseSqrt().asDiagonal() * faceModel.getColorBasis().transpose()).transpose()) * beta;
 	}
 private:
-	VectorXf alpha, beta, gamma;	// parameters to optimize
-	Matrix3f intrinsics;	// given by camera manufacturer, otherwise hardcode it?
-	Matrix4f extrinsics;	// given by optimization
+	VectorXd alpha, beta, gamma;	// parameters to optimize
+	Matrix3d intrinsics;	// given by camera manufacturer, otherwise hardcode it?
+	Matrix4d extrinsics;	// given by optimization
 	Image image;	// the corresponding image
 	FaceModel faceModel;	// the used face model, ie BFM17
-	MatrixX3f normals; // normal of the vertices
+	MatrixX3d normals; // normal of the vertices
 };

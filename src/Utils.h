@@ -16,8 +16,8 @@ namespace fs = std::filesystem;
 
 struct Vertex
 {
-	// position stored as 4 floats (4th component is supposed to be 1.0)
-	Vector4f position;
+	// position stored as 4 doubles (4th component is supposed to be 1.0)
+	Vector4d position;
 	// color stored as 4 unsigned char
 	Vector4uc color;
 };
@@ -25,9 +25,9 @@ struct Vertex
 struct Mesh
 {
 	// vertices of the mesh
-	MatrixX3f vertices;
+	MatrixX3d vertices;
 	// color of the vertices
-	MatrixX3f colors;
+	MatrixX3d colors;
 	// triangulation
 	MatrixX3i faces;
 };
