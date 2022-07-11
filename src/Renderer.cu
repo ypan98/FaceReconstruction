@@ -162,14 +162,14 @@ __device__ void raster_triangle(TriangleToRasterize triangle, unsigned char* col
 						gamma *= d * triangle.one_over_z2;
 
 						// attributes interpolation
-						double red_ = alpha * static_cast<double>(triangle.v0.color.x) + beta * static_cast<double>(triangle.v1.color.x) + gamma * static_cast<double>(triangle.v2.color.x);
-						double blue_ = alpha * static_cast<double>(triangle.v0.color.y) + beta * static_cast<double>(triangle.v1.color.y) + gamma * static_cast<double>(triangle.v2.color.y);
-						double green_ = alpha * static_cast<double>(triangle.v0.color.z) + beta * static_cast<double>(triangle.v1.color.z) + gamma * static_cast<double>(triangle.v2.color.z);
+						float red_ = alpha * triangle.v0.color.x + beta * triangle.v1.color.x + gamma * triangle.v2.color.x;
+						float blue_ = alpha * triangle.v0.color.y + beta * triangle.v1.color.y + gamma * triangle.v2.color.y;
+						float green_ = alpha * triangle.v0.color.z + beta * triangle.v1.color.z + gamma * triangle.v2.color.z;
 
 						// clamp bytes to 255
-						const unsigned char red = static_cast<unsigned char>(255.0f * fminf(static_cast<float>(red_), 1.0f));
-						const unsigned char green = static_cast<unsigned char>(255.0f * fminf(static_cast<float>(blue_), 1.0f));
-						const unsigned char blue = static_cast<unsigned char>(255.0f * fminf(static_cast<float>(green_), 1.0f));
+						const unsigned char red = static_cast<unsigned char>(255.0f * fminf(red_, 1.0f));
+						const unsigned char green = static_cast<unsigned char>(255.0f * fminf(blue_, 1.0f));
+						const unsigned char blue = static_cast<unsigned char>(255.0f * fminf(green_, 1.0f));
 
 						// update buffers
 						color_buffer[index * 3] = blue;
@@ -246,89 +246,9 @@ __global__ void render_(int* indices_buffer, float* vertex_position_buffer, floa
 	}
 }
 
-__global__ void compute_face(float *vertices, float* colors,
-	float* mean_shape, float* var_shape, float* weight_shape,
-	float* mean_exp, float* var_exp, float* weight_exp,
-	float* mean_color, float* var_color, float* weight_color,
-	int num_eigen_vectors_shape, int num_eigen_vectors_exp, int num_eigen_vectors_color,
-	int max_length) 
-{
-	int id = blockIdx.x * blockDim.x + threadIdx.x;
-	if (id < max_length) {
-		vertices[id] = mean_shape[id] + mean_exp[id];
-		for (int i = 0; i < num_eigen_vectors_shape; ++i) {
-			vertices[id] += weight_shape[i] * var_shape[id + i * max_length];
-		}
-		for (int i = 0; i < num_eigen_vectors_exp; ++i) {
-			vertices[id] += weight_exp[i] * var_exp[id + i * max_length];
-		}
-		colors[id] = mean_color[id];
-		for (int i = 0; i < num_eigen_vectors_color; ++i) {
-			colors[id] += weight_color[i] * var_color[id + i * max_length];
-		}
-	}
-}
-
-
-void Renderer::render(Face& face, Matrix4f projectionMatrix) {
-	VectorXf alpha = face.getAlpha().cast<float>();
-	VectorXf beta = face.getBeta().cast<float>();
-	VectorXf gamma = face.getGamma().cast<float>();
-	
-	float* device_alpha, * device_beta, * device_gamma;
-
-	cudaMallocAsync((void**)&device_alpha, alpha.rows() * sizeof(float), streams[0]);
-	cudaMallocAsync((void**)&device_beta, beta.rows() * sizeof(float), streams[1]);
-	cudaMallocAsync((void**)&device_gamma, gamma.rows() * sizeof(float), streams[2]);
-	cudaDeviceSynchronize();
-
-	cudaMemcpyAsync(device_projection, projectionMatrix.data(), 16 * sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpyAsync(device_alpha, alpha.data(), alpha.rows() * sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpyAsync(device_beta, beta.data(), beta.rows() * sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpyAsync(device_gamma, gamma.data(), gamma.rows() * sizeof(float), cudaMemcpyHostToDevice);
-	cudaDeviceSynchronize();
-
-	int block_size = 256;
-	int grid_size = int(3 * face.getFaceModel().getNumVertices() / block_size) + 1;
-
-	compute_face<<<grid_size, block_size>>>(device_vertices, device_colors,
-		device_model_shape_mean, device_model_shape_var, device_alpha,
-		device_model_exp_mean, device_model_exp_var, device_gamma,
-		device_model_color_mean, device_model_color_var, device_beta,
-		alpha.rows(), gamma.rows(), beta.rows(),
-		3 * face.getFaceModel().getNumVertices());
-	cudaDeviceSynchronize();
-
-	cudaEvent_t start, stop;
-	cudaEventCreate(&start);
-	cudaEventCreate(&stop);
-
-	cudaEventRecord(start);
-
-	block_size = 256;
-	grid_size = int(face.getFaceModel().getTriangulation().rows() / block_size) + 1;
-	render_<<<grid_size, block_size>>> (device_triangles, device_vertices, device_colors, device_rendered_color,
-		device_depth, device_bary_centric, device_pixel_triangle, device_projection, device_depth_locked, face.getFaceModel().getTriangulation().rows(), viewport_width, viewport_height);
-	cudaDeviceSynchronize();
-	
-	cudaEventRecord(stop);
-	cudaEventSynchronize(stop);
-	float milliseconds = 0;
-	cudaEventElapsedTime(&milliseconds, start, stop);
-	std::string time = std::to_string(milliseconds);
-	std::printf(time.c_str());
-
-	cudaMemcpyAsync(color_img.data, device_rendered_color, viewport_height * viewport_width * 3 * sizeof(unsigned char), cudaMemcpyDeviceToHost);
-	cudaMemcpyAsync(depth_img.data, device_depth, viewport_height * viewport_width * sizeof(int), cudaMemcpyDeviceToHost);
-	cudaMemcpyAsync(pixel_bary_coord_buffer.data, device_bary_centric, viewport_height * viewport_width * 3 * sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpyAsync(pixel_triangle_buffer.data, device_pixel_triangle, viewport_height * viewport_width * sizeof(int), cudaMemcpyDeviceToHost);
-	cudaDeviceSynchronize();
-}
-
-/*
-std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> render__(Face& face, Matrix4d projectionMatrix, int height, int width) {
-	VectorXd vertices = face.calculateVerticesDefault();
-	VectorXd colors = face.calculateColorsDefault();
+std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> render(Face& face, Matrix4f projectionMatrix, int height, int width) {
+	VectorXf vertices = face.calculateVerticesDefault().cast<float>();
+	VectorXf colors = face.calculateColorsDefault().cast<float>();
 	MatrixXi triangles = face.getFaceModel().getTriangulation().transpose();
 	int num_vertices = face.getFaceModel().getNumVertices();
 	int num_triangles = triangles.cols();
@@ -338,8 +258,9 @@ std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> render__(Face& face, Matrix4d pro
 	cv::Mat pixel_bary_coord_buffer = cv::Mat::zeros(height, width, CV_64FC3);
 	cv::Mat pixel_triangle_buffer = cv::Mat::zeros(height, width, CV_32S);
 
-	double* device_vertices, * device_colors, * device_projection, * device_bary_centric;
+	float* device_vertices, * device_colors, * device_projection;
 	unsigned char* device_rendered_color;
+	double* device_bary_centric;
 	int* device_pixel_triangle, * device_triangles, * device_depth_locked, * device_depth;
 
 	cudaStream_t streams[9];
@@ -353,28 +274,21 @@ std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> render__(Face& face, Matrix4d pro
 
 	cudaEventRecord(start);
 
-	cudaMallocAsync((void**)&device_vertices, num_vertices * 3 * sizeof(double), streams[0]);
-	cudaMallocAsync((void**)&device_colors, num_vertices * 3 * sizeof(double), streams[1]);
+	cudaMallocAsync((void**)&device_vertices, num_vertices * 3 * sizeof(float), streams[0]);
+	cudaMallocAsync((void**)&device_colors, num_vertices * 3 * sizeof(float), streams[1]);
 	cudaMallocAsync((void**)&device_triangles, num_triangles * 3 * sizeof(int), streams[2]);
 	cudaMallocAsync((void**)&device_rendered_color, height * width * 3 * sizeof(unsigned char), streams[3]);
 	cudaMallocAsync((void**)&device_depth, height * width * sizeof(int), streams[4]);
 	cudaMallocAsync((void**)&device_bary_centric, height * width * 3 * sizeof(double), streams[5]);
 	cudaMallocAsync((void**)&device_pixel_triangle, height * width * sizeof(int), streams[6]);
-	cudaMallocAsync((void**)&device_projection, 16 * sizeof(double), streams[7]);
+	cudaMallocAsync((void**)&device_projection, 16 * sizeof(float), streams[7]);
 	cudaMallocAsync((void**)&device_depth_locked, height * width * sizeof(int), streams[8]);
 
 	cudaDeviceSynchronize();
 
-	cudaEventRecord(stop);
-	cudaEventSynchronize(stop);
-	float milliseconds = 0;
-	cudaEventElapsedTime(&milliseconds, start, stop);
-	std::string time = std::to_string(milliseconds);
-	std::printf(time.c_str());
-
-	cudaMemcpyAsync(device_projection, projectionMatrix.data(), 16 * sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpyAsync(device_vertices, vertices.data(), num_vertices * 3 * sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpyAsync(device_colors, colors.data(), num_vertices * 3 * sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpyAsync(device_projection, projectionMatrix.data(), 16 * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpyAsync(device_vertices, vertices.data(), num_vertices * 3 * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpyAsync(device_colors, colors.data(), num_vertices * 3 * sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpyAsync(device_triangles, triangles.data(), num_triangles * 3 * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpyAsync(device_depth, depth_img.data, height * width * sizeof(int), cudaMemcpyHostToDevice);
 
@@ -388,7 +302,7 @@ std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> render__(Face& face, Matrix4d pro
 	int block_size = 256;
 	int grid_size = int(num_triangles / block_size) + 1;
 
-	render_<<<grid_size, block_size>>> (device_triangles, device_vertices, device_colors, device_rendered_color,
+	render_ << <grid_size, block_size >> > (device_triangles, device_vertices, device_colors, device_rendered_color,
 		device_depth, device_bary_centric, device_pixel_triangle, device_projection, device_depth_locked, num_triangles, width, height);
 
 	cudaDeviceSynchronize();
@@ -412,5 +326,11 @@ std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> render__(Face& face, Matrix4d pro
 		cudaStreamDestroy(streams[i]);
 	}
 	cudaDeviceSynchronize();
+	cudaEventRecord(stop);
+	cudaEventSynchronize(stop);
+	float milliseconds = 0;
+	cudaEventElapsedTime(&milliseconds, start, stop);
+	std::string time = std::to_string(milliseconds);
+	std::printf(time.c_str());
 	return std::tuple(color_img, depth_img, pixel_bary_coord_buffer, pixel_triangle_buffer);
-}*/
+}
