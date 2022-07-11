@@ -74,6 +74,7 @@ file(GLOB SOURCE_FILES
 )
 
 add_executable(face_reconstruction main.cpp ${SOURCE_FILES})
+#add_compile_options("-fopenmp")
 if(WIN32)
     target_link_libraries(face_reconstruction ${CERES_LIBRARIES} ${OpenCV_LIBS} ${HDF5_LIBRARIES} ${GLEW_LIBRARIES} ${GLFW_LIBRARIES} ${OPENGL32_LIBRARY})
     target_include_directories(face_reconstruction PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${Eigen3_INCLUDE_DIR} ${glog_INCLUDE_DIR} ${Ceres_INCLUDE_DIR}  ${OpenCV_INCLUDE_DIRS} ${HDF5_INCLUDE_DIR} ${GLFW_INCLUDE_DIR} ${GLEW_INCLUDE_DIR})

@@ -12,7 +12,6 @@ int taskOption = -1;
 // vector<string> inputOptions{ "Use sample image(s)" };
 // int inputOption = -1;
 
-
 void handleMenu() {
 	cout << "Please select a task:\n";
 	for (int i = 0; i < taskOptions.size(); i++) cout << i + 1 << ". " << taskOptions[i] << endl;
@@ -38,10 +37,6 @@ void performTask() {
 		optimizer.optimize(sourceFace);
 		// write out mesh
 		sourceFace.writeReconstructedFace();
-		// debug prints
-		cout << sourceFace.getAlpha() << endl;
-		cout << sourceFace.getExtrinsics() << endl;
-		cout << sourceFace.getIntrinsics() << endl;
 		break;
 	}
 	case 2:
@@ -92,6 +87,7 @@ void performTask() {
 
 int main(int argc, char** argv) {
 	google::InitGoogleLogging(argv[0]);
+	omp_set_num_threads(omp_get_max_threads());
 	handleMenu();
 	performTask();
 	return 0;
