@@ -140,11 +140,12 @@ public:
         // ...
         // SOLVE OPTIMIZATION
         ceres::Solver::Options options;
-        options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-        // options.preconditioner_type = ceres::JACOBI;
+        options.dense_linear_algebra_library_type = ceres::CUDA;
         options.num_threads = omp_get_max_threads();
+        options.max_num_iterations = 500;
+        options.linear_solver_type = ceres::DENSE_QR;
+        // options.preconditioner_type = ceres::JACOBI;
         options.minimizer_progress_to_stdout = true;
-        options.max_num_iterations = 1000;
         ceres::Solver::Summary summary;
         ceres::Solve(options, &problem, &summary);
         std::cout << summary.BriefReport() << std::endl;
