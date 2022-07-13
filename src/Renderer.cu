@@ -348,11 +348,6 @@ void Renderer::initialiaze_rendering_context(FaceModel& face_model, int height, 
 void Renderer::render(Face& face, Matrix4f projectionMatrix, VectorXf vertices, VectorXf colors) {
 	//VectorXf vertices = face.calculateVerticesDefault().cast<float>();
 	//VectorXf colors = face.calculateColorsDefault().cast<float>();
-	cudaEvent_t start, stop;
-	cudaEventCreate(&start);
-	cudaEventCreate(&stop);
-
-	cudaEventRecord(start);
 	int num_vertices = face.getNumVertices();
 	int num_triangles = face.getNumTriangles();
 
@@ -381,11 +376,4 @@ void Renderer::render(Face& face, Matrix4f projectionMatrix, VectorXf vertices, 
 	cudaMemcpyAsync(pixel_bary_coord_buffer.data, device_bary_centric, viewport_height * viewport_width * 3 * sizeof(double), cudaMemcpyDeviceToHost);
 	cudaMemcpyAsync(pixel_triangle_buffer.data, device_pixel_triangle, viewport_height * viewport_width * sizeof(int), cudaMemcpyDeviceToHost);
 	cudaDeviceSynchronize();
-
-	cudaEventRecord(stop);
-	cudaEventSynchronize(stop);
-	float milliseconds = 0;
-	cudaEventElapsedTime(&milliseconds, start, stop);
-	std::string time = std::to_string(milliseconds) + "\n";
-	std::printf(time.c_str());
 }
