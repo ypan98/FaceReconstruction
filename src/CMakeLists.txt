@@ -67,7 +67,7 @@ endif()
 
 set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE ON)
 set(CUDA_SEPARABLE_COMPILATION ON)
-add_definitions("-D_DISABLE_EXTENDED_ALIGNED_STORAGE -O3")
+add_definitions("-D_DISABLE_EXTENDED_ALIGNED_STORAGE")
 
 if (MSVC)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /bigobj")
@@ -81,6 +81,7 @@ file(GLOB SOURCE_FILES
 )
 
 add_executable(face_reconstruction ${SOURCE_FILES})
+add_compile_options("-fopenmp")
 
 if(WIN32)
     target_link_libraries(face_reconstruction ${CERES_LIBRARIES} ${OpenCV_LIBS} ${HDF5_LIBRARIES} ${GLEW_LIBRARIES} ${GLFW_LIBRARIES} ${OPENGL32_LIBRARY})

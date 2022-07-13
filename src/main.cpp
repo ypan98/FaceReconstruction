@@ -3,6 +3,7 @@
 #include "Face.h"
 #include "Renderer.h"
 #include <chrono>
+#include <omp.h>
 
 using namespace std;
 
@@ -61,22 +62,31 @@ void performTask() {
 	case 3:
 	{
 		auto& renderer = Renderer::Get();
-		Face face;
-		face.randomizeParameters();
+		Face face = Face("sample1", "BFM17");
+		// randomize for testing
+		optimizer.optimize(face);
+		Matrix4f projection_matrix = face.getExtrinsics().cast<float>();
+		Matrix4f intrinsics = Matrix4f::Identity();
+		intrinsics.block(0, 0, 3, 3) = face.getIntrinsics().cast<float>();
+		projection_matrix = intrinsics * projection_matrix;
+		/*Face face;
+		face.randomizeParameters();*/
 		renderer.initialiaze_rendering_context(face.getFaceModel(), 720, 720);
 
 		// Initialize the default projection matrix which moves the face to origin
 		double scale_factor = 1 / 100.;
 		MatrixXd coords = face.calculateVerticesDefault().reshaped(3, face.getFaceModel().getNumVertices()).transpose();
 		Vector3d mean = coords.colwise().mean();
-		Matrix4d projection_matrix = Matrix4d::Identity() * scale_factor;
-		projection_matrix.block(0, 3, 3, 1) = -mean * scale_factor;
-		projection_matrix(3, 3) = 1.;
+		/*Matrix4d projection_matrix_ = Matrix4d::Identity() * scale_factor;
+		projection_matrix_.block(0, 3, 3, 1) = -mean * scale_factor;
+		projection_matrix_(3, 3) = 1.;*/
+		cout << mean << endl;
+		cout << face.getExtrinsics().block(0, 3, 3, 1) << endl;
 		
-		const auto start = std::chrono::steady_clock::now();
-		renderer.render(face, projection_matrix.transpose().cast<float> ());
-		const auto end = std::chrono::steady_clock::now();
-		std::cout << "time used: " << std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()) << "ms\n";
+		VectorXf vertices = face.calculateVerticesDefault().cast<float>();
+		VectorXf colors = face.calculateColorsDefault().cast<float>();
+
+		renderer.render(face, projection_matrix.transpose().cast<float>(), vertices, colors);
 
 		cv::Mat depth_to_visualize;
 		cv::normalize(renderer.get_depth_buffer(), depth_to_visualize, 0, 255, cv::NORM_MINMAX, CV_8UC1);
@@ -93,6 +103,7 @@ void performTask() {
 
 
 int main(int argc, char** argv) {
+	omp_set_num_threads(omp_get_max_threads());
 	google::InitGoogleLogging(argv[0]);
 	handleMenu();
 	performTask();

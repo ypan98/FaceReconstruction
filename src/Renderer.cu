@@ -20,6 +20,8 @@ struct __align__(16) TriangleToRasterize
 	double one_over_z0;
 	double one_over_z1;
 	double one_over_z2;
+
+	unsigned char should_draw;
 };
 
 // Auxiliary functions
@@ -114,89 +116,91 @@ __device__ double implicit_line(float x, float y, const float4& v1, const float4
 	return ((double)v1.y - (double)v2.y) * (double)x + ((double)v2.x - (double)v1.x) * (double)y + (double)v1.x * (double)v2.y - (double)v2.x * (double)v1.y;
 };
 
-__device__ void raster_triangle(TriangleToRasterize triangle, unsigned char* color_buffer, int* depth_buffer, double* pixel_bary_coord_buffer,
-	int* pixel_triangle_buffer, int* depth_locked, int triangle_index, int width)
+
+__global__ void raster_triangle(TriangleToRasterize* triangles, unsigned char* color_buffer, int* depth_buffer, double* pixel_bary_coord_buffer,
+	int* pixel_triangle_buffer, int* depth_locked, int width, int max_triangle_id)
 {
-	for (int yi = triangle.min_y; yi <= triangle.max_y; ++yi)
-	{
-		for (int xi = triangle.min_x; xi <= triangle.max_x; ++xi)
+	int triangle_index = blockIdx.x * blockDim.x + threadIdx.x;
+	if (triangle_index < max_triangle_id && triangles[triangle_index].should_draw) {
+		TriangleToRasterize triangle = triangles[triangle_index];
+		for (int yi = triangle.min_y; yi <= triangle.max_y; ++yi)
 		{
-			const float x = static_cast<float>(xi) + 0.5f;
-			const float y = static_cast<float>(yi) + 0.5f;
-
-			// these will be used for barycentric weights computation
-			const double one_over_v0ToLine12 = 1.0 / implicit_line(triangle.v0.position.x, triangle.v0.position.y, triangle.v1.position, triangle.v2.position);
-			const double one_over_v1ToLine20 = 1.0 / implicit_line(triangle.v1.position.x, triangle.v1.position.y, triangle.v2.position, triangle.v0.position);
-			const double one_over_v2ToLine01 = 1.0 / implicit_line(triangle.v2.position.x, triangle.v2.position.y, triangle.v0.position, triangle.v1.position);
-			// affine barycentric weights
-			double alpha = implicit_line(x, y, triangle.v1.position, triangle.v2.position) * one_over_v0ToLine12;
-			double beta = implicit_line(x, y, triangle.v2.position, triangle.v0.position) * one_over_v1ToLine20;
-			double gamma = implicit_line(x, y, triangle.v0.position, triangle.v1.position) * one_over_v2ToLine01;
-
-			// if pixel (x, y) is inside the triangle or on one of its edges
-			if (alpha >= 0 && beta >= 0 && gamma >= 0)
+			for (int xi = triangle.min_x; xi <= triangle.max_x; ++xi)
 			{
-				const int pixel_index_row = yi;
-				const int pixel_index_col = xi;
+				const float x = static_cast<float>(xi) + 0.5f;
+				const float y = static_cast<float>(yi) + 0.5f;
 
-				double z_affine = alpha * static_cast<double>(triangle.v0.position.z) + beta * static_cast<double>(triangle.v1.position.z) + gamma * static_cast<double>(triangle.v2.position.z);
+				// these will be used for barycentric weights computation
+				const double one_over_v0ToLine12 = 1.0 / implicit_line(triangle.v0.position.x, triangle.v0.position.y, triangle.v1.position, triangle.v2.position);
+				const double one_over_v1ToLine20 = 1.0 / implicit_line(triangle.v1.position.x, triangle.v1.position.y, triangle.v2.position, triangle.v0.position);
+				const double one_over_v2ToLine01 = 1.0 / implicit_line(triangle.v2.position.x, triangle.v2.position.y, triangle.v0.position, triangle.v1.position);
+				// affine barycentric weights
+				double alpha = implicit_line(x, y, triangle.v1.position, triangle.v2.position) * one_over_v0ToLine12;
+				double beta = implicit_line(x, y, triangle.v2.position, triangle.v0.position) * one_over_v1ToLine20;
+				double gamma = implicit_line(x, y, triangle.v0.position, triangle.v1.position) * one_over_v2ToLine01;
 
-				if (z_affine > 1.0)
+				// if pixel (x, y) is inside the triangle or on one of its edges
+				if (alpha >= 0 && beta >= 0 && gamma >= 0)
 				{
-					continue;
+					const int pixel_index_row = yi;
+					const int pixel_index_col = xi;
+
+					double z_affine = alpha * static_cast<double>(triangle.v0.position.z) + beta * static_cast<double>(triangle.v1.position.z) + gamma * static_cast<double>(triangle.v2.position.z);
+
+					if (z_affine > 1.0)
+					{
+						continue;
+					}
+					int index = pixel_index_row * width + pixel_index_col;
+
+					bool isLocked = false;
+					do
+					{
+						isLocked = (atomicCAS(&depth_locked[index], 0, 1) == 0);
+						int depth = z_affine * INT_MAX;
+						atomicMin(&depth_buffer[index], depth);
+						if (depth_buffer[index] == depth) {
+							// perspective-correct barycentric weights
+							double d = alpha * triangle.one_over_z0 + beta * triangle.one_over_z1 + gamma * triangle.one_over_z2;
+							d = 1.0 / d;
+							alpha *= d * triangle.one_over_z0;
+							beta *= d * triangle.one_over_z1;
+							gamma *= d * triangle.one_over_z2;
+
+							// attributes interpolation
+							double red_ = alpha * static_cast<double>(triangle.v0.color.x) + beta * static_cast<double>(triangle.v1.color.x) + gamma * static_cast<double>(triangle.v2.color.x);
+							double blue_ = alpha * static_cast<double>(triangle.v0.color.y) + beta * static_cast<double>(triangle.v1.color.y) + gamma * static_cast<double>(triangle.v2.color.y);
+							double green_ = alpha * static_cast<double>(triangle.v0.color.z) + beta * static_cast<double>(triangle.v1.color.z) + gamma * static_cast<double>(triangle.v2.color.z);
+
+							// clamp bytes to 255
+							const unsigned char red = static_cast<unsigned char>(255.0f * fminf(static_cast<float>(red_), 1.0f));
+							const unsigned char green = static_cast<unsigned char>(255.0f * fminf(static_cast<float>(blue_), 1.0f));
+							const unsigned char blue = static_cast<unsigned char>(255.0f * fminf(static_cast<float>(green_), 1.0f));
+
+							// update buffers
+							color_buffer[index * 3] = blue;
+							color_buffer[index * 3 + 1] = green;
+							color_buffer[index * 3 + 2] = red;
+
+							pixel_bary_coord_buffer[index * 3] = alpha;
+							pixel_bary_coord_buffer[index * 3 + 1] = gamma;
+							pixel_bary_coord_buffer[index * 3 + 2] = beta;
+
+							pixel_triangle_buffer[index] = triangle_index;
+						}
+
+						if (isLocked) {
+							depth_locked[index] = 0;
+						}
+					} while (!isLocked);
 				}
-				int index = pixel_index_row * width + pixel_index_col;
-
-				bool isLocked = false;
-				do
-				{
-					isLocked = (atomicCAS(&depth_locked[index], 0, 1) == 0);
-					int depth = z_affine * INT_MAX;
-					atomicMin(&depth_buffer[index], depth);
-					if (depth_buffer[index] == depth) {
-						// perspective-correct barycentric weights
-						double d = alpha * triangle.one_over_z0 + beta * triangle.one_over_z1 + gamma * triangle.one_over_z2;
-						d = 1.0 / d;
-						alpha *= d * triangle.one_over_z0;
-						beta *= d * triangle.one_over_z1;
-						gamma *= d * triangle.one_over_z2;
-
-						// attributes interpolation
-						double red_ = alpha * static_cast<double>(triangle.v0.color.x) + beta * static_cast<double>(triangle.v1.color.x) + gamma * static_cast<double>(triangle.v2.color.x);
-						double blue_ = alpha * static_cast<double>(triangle.v0.color.y) + beta * static_cast<double>(triangle.v1.color.y) + gamma * static_cast<double>(triangle.v2.color.y);
-						double green_ = alpha * static_cast<double>(triangle.v0.color.z) + beta * static_cast<double>(triangle.v1.color.z) + gamma * static_cast<double>(triangle.v2.color.z);
-
-						// clamp bytes to 255
-						const unsigned char red = static_cast<unsigned char>(255.0f * fminf(static_cast<float>(red_), 1.0f));
-						const unsigned char green = static_cast<unsigned char>(255.0f * fminf(static_cast<float>(blue_), 1.0f));
-						const unsigned char blue = static_cast<unsigned char>(255.0f * fminf(static_cast<float>(green_), 1.0f));
-
-						// update buffers
-						color_buffer[index * 3] = blue;
-						color_buffer[index * 3 + 1] = green;
-						color_buffer[index * 3 + 2] = red;
-
-						pixel_bary_coord_buffer[index * 3] = alpha;
-						pixel_bary_coord_buffer[index * 3 + 1] = gamma;
-						pixel_bary_coord_buffer[index * 3 + 2] = beta;
-
-						pixel_triangle_buffer[index] = triangle_index;
-					}
-
-					if (isLocked) {
-						depth_locked[index] = 0;
-					}
-				} while (!isLocked);
 			}
 		}
 	}
 };
 
-__global__ void render_(int* indices_buffer, float* vertex_position_buffer, float* vertex_color_buffer,
-	unsigned char* color_buffer, int* depth_buffer, double* pixel_bary_coord_buffer, int* pixel_triangle_buffer,
-	float* projection_matrix, int* depth_locked,
-	int max_triangle_id,
-	int viewport_width, int viewport_height)
+__global__ void build_triangles(int* indices_buffer, float* vertex_position_buffer, float* vertex_color_buffer,
+	float* projection_matrix, TriangleToRasterize* triangles, int max_triangle_id, int viewport_width, int viewport_height)
 {
 	int triangle_index = blockIdx.x * blockDim.x + threadIdx.x;
 	if (triangle_index < max_triangle_id) {
@@ -208,7 +212,7 @@ __global__ void render_(int* indices_buffer, float* vertex_position_buffer, floa
 			vertices[i].color = make_float4(vertex_color_buffer[v_id * 3], vertex_color_buffer[v_id * 3 + 1], vertex_color_buffer[v_id * 3 + 2], 1.f);
 		}
 
-		TriangleToRasterize triangles_to_raster;
+		TriangleToRasterize triangle_to_raster;
 		unsigned char visibility_bits[3];
 		for (unsigned char k = 0; k < 3; k++)
 		{
@@ -236,13 +240,15 @@ __global__ void render_(int* indices_buffer, float* vertex_position_buffer, floa
 		// all vertices are not visible - reject the triangle.
 		if ((visibility_bits[0] & visibility_bits[1] & visibility_bits[2]) > 0)
 		{
-			return;
+			triangle_to_raster.should_draw = 0;
 		}
 		bool should_render = false;
-		triangles_to_raster = process_prospective_tri(vertices[0], vertices[1], vertices[2], viewport_width, viewport_height, true, should_render);
+		triangle_to_raster = process_prospective_tri(vertices[0], vertices[1], vertices[2], viewport_width, viewport_height, true, should_render);
 		if (should_render) {
-			raster_triangle(triangles_to_raster, color_buffer, depth_buffer, pixel_bary_coord_buffer, pixel_triangle_buffer, depth_locked, triangle_index, viewport_width);
+			triangle_to_raster.should_draw = 1;
 		}
+		else triangle_to_raster.should_draw = 0;
+		triangles[triangle_index] = triangle_to_raster;
 	}
 }
 
@@ -269,136 +275,7 @@ __global__ void compute_face(float *vertices, float* colors,
 	}
 }
 
-
-void Renderer::render(Face& face, Matrix4f projectionMatrix) {
-	VectorXf alpha = face.getAlpha().cast<float>();
-	VectorXf beta = face.getBeta().cast<float>();
-	VectorXf gamma = face.getGamma().cast<float>();
-	
-	float* device_alpha, * device_beta, * device_gamma;
-
-	cudaMallocAsync((void**)&device_alpha, alpha.rows() * sizeof(float), streams[0]);
-	cudaMallocAsync((void**)&device_beta, beta.rows() * sizeof(float), streams[1]);
-	cudaMallocAsync((void**)&device_gamma, gamma.rows() * sizeof(float), streams[2]);
-	cudaDeviceSynchronize();
-
-	cudaMemcpyAsync(device_projection, projectionMatrix.data(), 16 * sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpyAsync(device_alpha, alpha.data(), alpha.rows() * sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpyAsync(device_beta, beta.data(), beta.rows() * sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpyAsync(device_gamma, gamma.data(), gamma.rows() * sizeof(float), cudaMemcpyHostToDevice);
-	cudaDeviceSynchronize();
-
-	int block_size = 256;
-	int grid_size = int(3 * face.getFaceModel().getNumVertices() / block_size) + 1;
-
-	compute_face<<<grid_size, block_size>>>(device_vertices, device_colors,
-		device_model_shape_mean, device_model_shape_var, device_alpha,
-		device_model_exp_mean, device_model_exp_var, device_gamma,
-		device_model_color_mean, device_model_color_var, device_beta,
-		alpha.rows(), gamma.rows(), beta.rows(),
-		3 * face.getFaceModel().getNumVertices());
-	cudaDeviceSynchronize();
-
-	cudaEvent_t start, stop;
-	cudaEventCreate(&start);
-	cudaEventCreate(&stop);
-
-	cudaEventRecord(start);
-
-	block_size = 256;
-	grid_size = int(face.getFaceModel().getTriangulation().rows() / block_size) + 1;
-	render_<<<grid_size, block_size>>> (device_triangles, device_vertices, device_colors, device_rendered_color,
-		device_depth, device_bary_centric, device_pixel_triangle, device_projection, device_depth_locked, face.getFaceModel().getTriangulation().rows(), viewport_width, viewport_height);
-	cudaDeviceSynchronize();
-	
-	cudaEventRecord(stop);
-	cudaEventSynchronize(stop);
-	float milliseconds = 0;
-	cudaEventElapsedTime(&milliseconds, start, stop);
-	std::string time = std::to_string(milliseconds);
-	std::printf(time.c_str());
-
-	cudaMemcpyAsync(color_img.data, device_rendered_color, viewport_height * viewport_width * 3 * sizeof(unsigned char), cudaMemcpyDeviceToHost);
-	cudaMemcpyAsync(depth_img.data, device_depth, viewport_height * viewport_width * sizeof(int), cudaMemcpyDeviceToHost);
-	cudaMemcpyAsync(pixel_bary_coord_buffer.data, device_bary_centric, viewport_height * viewport_width * 3 * sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpyAsync(pixel_triangle_buffer.data, device_pixel_triangle, viewport_height * viewport_width * sizeof(int), cudaMemcpyDeviceToHost);
-	cudaDeviceSynchronize();
-}
-
-/*
-std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> render__(Face& face, Matrix4d projectionMatrix, int height, int width) {
-	VectorXd vertices = face.calculateVerticesDefault();
-	VectorXd colors = face.calculateColorsDefault();
-	MatrixXi triangles = face.getFaceModel().getTriangulation().transpose();
-	int num_vertices = face.getFaceModel().getNumVertices();
-	int num_triangles = triangles.cols();
-
-	cv::Mat color_img = cv::Mat::zeros(height, width, CV_8UC3);
-	cv::Mat depth_img = INT_MAX * cv::Mat::ones(height, width, CV_32SC1);
-	cv::Mat pixel_bary_coord_buffer = cv::Mat::zeros(height, width, CV_64FC3);
-	cv::Mat pixel_triangle_buffer = cv::Mat::zeros(height, width, CV_32S);
-
-	double* device_vertices, * device_colors, * device_projection, * device_bary_centric;
-	unsigned char* device_rendered_color;
-	int* device_pixel_triangle, * device_triangles, * device_depth_locked, * device_depth;
-
-	cudaStream_t streams[9];
-
-	for (int i = 0; i < 9; ++i) {
-		cudaStreamCreate(&streams[i]);
-	}
-	cudaEvent_t start, stop;
-	cudaEventCreate(&start);
-	cudaEventCreate(&stop);
-
-	cudaEventRecord(start);
-
-	cudaMallocAsync((void**)&device_vertices, num_vertices * 3 * sizeof(double), streams[0]);
-	cudaMallocAsync((void**)&device_colors, num_vertices * 3 * sizeof(double), streams[1]);
-	cudaMallocAsync((void**)&device_triangles, num_triangles * 3 * sizeof(int), streams[2]);
-	cudaMallocAsync((void**)&device_rendered_color, height * width * 3 * sizeof(unsigned char), streams[3]);
-	cudaMallocAsync((void**)&device_depth, height * width * sizeof(int), streams[4]);
-	cudaMallocAsync((void**)&device_bary_centric, height * width * 3 * sizeof(double), streams[5]);
-	cudaMallocAsync((void**)&device_pixel_triangle, height * width * sizeof(int), streams[6]);
-	cudaMallocAsync((void**)&device_projection, 16 * sizeof(double), streams[7]);
-	cudaMallocAsync((void**)&device_depth_locked, height * width * sizeof(int), streams[8]);
-
-	cudaDeviceSynchronize();
-
-	cudaEventRecord(stop);
-	cudaEventSynchronize(stop);
-	float milliseconds = 0;
-	cudaEventElapsedTime(&milliseconds, start, stop);
-	std::string time = std::to_string(milliseconds);
-	std::printf(time.c_str());
-
-	cudaMemcpyAsync(device_projection, projectionMatrix.data(), 16 * sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpyAsync(device_vertices, vertices.data(), num_vertices * 3 * sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpyAsync(device_colors, colors.data(), num_vertices * 3 * sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpyAsync(device_triangles, triangles.data(), num_triangles * 3 * sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpyAsync(device_depth, depth_img.data, height * width * sizeof(int), cudaMemcpyHostToDevice);
-
-	cudaMemsetAsync(device_rendered_color, 0, height * width * 3 * sizeof(unsigned char), streams[0]);
-	cudaMemsetAsync(device_bary_centric, 0, height * width * 3 * sizeof(double), streams[1]);
-	cudaMemsetAsync(device_pixel_triangle, 0, height * width * sizeof(int), streams[2]);
-	cudaMemsetAsync(device_depth_locked, 0, height * width * sizeof(int), streams[3]);
-
-	cudaDeviceSynchronize();
-
-	int block_size = 256;
-	int grid_size = int(num_triangles / block_size) + 1;
-
-	render_<<<grid_size, block_size>>> (device_triangles, device_vertices, device_colors, device_rendered_color,
-		device_depth, device_bary_centric, device_pixel_triangle, device_projection, device_depth_locked, num_triangles, width, height);
-
-	cudaDeviceSynchronize();
-
-	cudaMemcpyAsync(color_img.data, device_rendered_color, height * width * 3 * sizeof(unsigned char), cudaMemcpyDeviceToHost);
-	cudaMemcpyAsync(depth_img.data, device_depth, height * width * sizeof(int), cudaMemcpyDeviceToHost);
-	cudaMemcpyAsync(pixel_bary_coord_buffer.data, device_bary_centric, height * width * 3 * sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpyAsync(pixel_triangle_buffer.data, device_pixel_triangle, height * width * sizeof(int), cudaMemcpyDeviceToHost);
-	cudaDeviceSynchronize();
-
+void Renderer::terminate_rendering_context() {
 	cudaFreeAsync(device_vertices, streams[0]);
 	cudaFreeAsync(device_colors, streams[1]);
 	cudaFreeAsync(device_projection, streams[2]);
@@ -407,10 +284,108 @@ std::tuple<cv::Mat, cv::Mat, cv::Mat, cv::Mat> render__(Face& face, Matrix4d pro
 	cudaFreeAsync(device_bary_centric, streams[5]);
 	cudaFreeAsync(device_pixel_triangle, streams[6]);
 	cudaFreeAsync(device_triangles, streams[7]);
+	cudaFreeAsync(device_depth_locked, streams[8]);
 
-	for (int i = 0; i < 8; ++i) {
+	for (int i = 0; i < 9; ++i) {
 		cudaStreamDestroy(streams[i]);
 	}
+}
+
+void Renderer::clear_buffers() {
+	cv::Mat depth = INT_MAX * cv::Mat::ones(viewport_height, viewport_width, CV_32SC1);
+	cudaMemcpyAsync(device_depth, depth.data, viewport_height * viewport_width * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemsetAsync(device_rendered_color, 0, viewport_height * viewport_width * 3 * sizeof(unsigned char), streams[0]);
+	cudaMemsetAsync(device_bary_centric, 0, viewport_height * viewport_width * 3 * sizeof(double), streams[1]);
+	cudaMemsetAsync(device_pixel_triangle, 0, viewport_height * viewport_width * sizeof(int), streams[2]);
+	cudaMemsetAsync(device_depth_locked, 0, viewport_height * viewport_width * sizeof(int), streams[3]);
 	cudaDeviceSynchronize();
-	return std::tuple(color_img, depth_img, pixel_bary_coord_buffer, pixel_triangle_buffer);
-}*/
+}
+
+void Renderer::initialiaze_rendering_context(FaceModel& face_model, int height, int width) {
+	viewport_height = height;
+	viewport_width = width;
+
+	color_img = cv::Mat::zeros(viewport_height, viewport_width, CV_8UC3);
+	depth_img = INT_MAX * cv::Mat::ones(viewport_height, viewport_width, CV_32SC1);
+	pixel_bary_coord_buffer = cv::Mat::zeros(viewport_height, viewport_width, CV_64FC3);
+	pixel_triangle_buffer = cv::Mat::zeros(viewport_height, viewport_width, CV_32S);
+
+	MatrixXi triangles = face_model.getTriangulation().transpose();
+
+	int num_vertices = face_model.getNumVertices();
+	int num_triangles = triangles.cols();
+
+	cudaStream_t streams[15];
+	for (int i = 0; i < 15; ++i) {
+		cudaStreamCreate(&streams[i]);
+	}
+
+	// Allocate memory for buffers
+	cudaMallocAsync((void**)&device_vertices, num_vertices * 3 * sizeof(float), streams[0]);
+	cudaMallocAsync((void**)&device_colors, num_vertices * 3 * sizeof(float), streams[1]);
+	cudaMallocAsync((void**)&device_triangles, num_triangles * 3 * sizeof(int), streams[2]);
+	cudaMallocAsync((void**)&device_rendered_color, viewport_height * viewport_width * 3 * sizeof(unsigned char), streams[3]);
+	cudaMallocAsync((void**)&device_depth, viewport_height * viewport_width * sizeof(int), streams[4]);
+	cudaMallocAsync((void**)&device_bary_centric, viewport_height * viewport_width * 3 * sizeof(double), streams[5]);
+	cudaMallocAsync((void**)&device_pixel_triangle, viewport_height * viewport_width * sizeof(int), streams[6]);
+	cudaMallocAsync((void**)&device_projection, 16 * sizeof(float), streams[7]);
+	cudaMallocAsync((void**)&device_depth_locked, viewport_height * viewport_width * sizeof(int), streams[8]);
+
+	cudaDeviceSynchronize();
+
+	// Initialiaze buffers
+	cudaMemcpyAsync(device_triangles, triangles.data(), num_triangles * 3 * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpyAsync(device_depth, depth_img.data, viewport_height * viewport_width * sizeof(int), cudaMemcpyHostToDevice);
+
+	cudaMemsetAsync(device_rendered_color, 0, viewport_height * viewport_width * 3 * sizeof(unsigned char), streams[0]);
+	cudaMemsetAsync(device_bary_centric, 0, viewport_height * viewport_width * 3 * sizeof(double), streams[1]);
+	cudaMemsetAsync(device_pixel_triangle, 0, viewport_height * viewport_width * sizeof(int), streams[2]);
+	cudaMemsetAsync(device_depth_locked, 0, viewport_height * viewport_width * sizeof(int), streams[3]);
+
+	cudaDeviceSynchronize();
+}
+
+void Renderer::render(Face& face, Matrix4f projectionMatrix, VectorXf vertices, VectorXf colors) {
+	//VectorXf vertices = face.calculateVerticesDefault().cast<float>();
+	//VectorXf colors = face.calculateColorsDefault().cast<float>();
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+
+	cudaEventRecord(start);
+	int num_vertices = face.getNumVertices();
+	int num_triangles = face.getNumTriangles();
+
+	TriangleToRasterize* device_triangles_to_render;
+
+	cudaMallocAsync(&device_triangles_to_render, num_triangles * sizeof(TriangleToRasterize), streams[0]);
+	cudaMemsetAsync(device_triangles_to_render, 0, num_triangles * sizeof(TriangleToRasterize), streams[1]);
+
+	cudaMemcpyAsync(device_vertices, vertices.data(), num_vertices * 3 * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpyAsync(device_colors, colors.data(), num_vertices * 3 * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpyAsync(device_projection, projectionMatrix.data(), 16 * sizeof(float), cudaMemcpyHostToDevice);
+	cudaDeviceSynchronize();
+
+	int block_size = 256;
+	int grid_size = int(num_triangles / block_size) + 1;
+	build_triangles <<<grid_size, block_size>>> (device_triangles, device_vertices, device_colors, device_projection,
+		device_triangles_to_render, num_triangles, viewport_width, viewport_height);
+	cudaDeviceSynchronize();
+
+	raster_triangle <<<grid_size, block_size>>> (device_triangles_to_render, device_rendered_color,
+		device_depth, device_bary_centric, device_pixel_triangle, device_depth_locked, viewport_width, num_triangles);
+	cudaDeviceSynchronize();
+
+	cudaMemcpyAsync(color_img.data, device_rendered_color, viewport_height * viewport_width * 3 * sizeof(unsigned char), cudaMemcpyDeviceToHost);
+	cudaMemcpyAsync(depth_img.data, device_depth, viewport_height * viewport_width * sizeof(int), cudaMemcpyDeviceToHost);
+	cudaMemcpyAsync(pixel_bary_coord_buffer.data, device_bary_centric, viewport_height * viewport_width * 3 * sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpyAsync(pixel_triangle_buffer.data, device_pixel_triangle, viewport_height * viewport_width * sizeof(int), cudaMemcpyDeviceToHost);
+	cudaDeviceSynchronize();
+
+	cudaEventRecord(stop);
+	cudaEventSynchronize(stop);
+	float milliseconds = 0;
+	cudaEventElapsedTime(&milliseconds, start, stop);
+	std::string time = std::to_string(milliseconds) + "\n";
+	std::printf(time.c_str());
+}

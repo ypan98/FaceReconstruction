@@ -121,6 +121,10 @@ public:
 		return triangulation;
 	}
 
+	unsigned getTriangulationRows() const {
+		return triangulation.rows();
+	}
+
 	unsigned getNumLandmarks() const {
 		return landmarks.rows();
 	}

@@ -27,6 +27,14 @@ public:
 		this->gamma = sourceFace.gamma;
 	}
 
+	unsigned getNumTriangles() const {
+		return faceModel.getTriangulationRows();
+	}
+
+	unsigned getNumVertices() const {
+		return faceModel.getNumVertices();
+	}
+
 	// Randomize parameters (for testing purpose)
 	void randomizeParameters(double scaleAlpha = 1, double scaleBeta = 1, double scaleGamma = 1) {
 		alpha = VectorXd::Random(faceModel.getAlphaSize()).cwiseAbs() * -scaleAlpha;
