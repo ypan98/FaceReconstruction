@@ -38,11 +38,13 @@ public:
 	}
 
 	Matrix4d get_perspective_projection_matrix(double fov, double aspect_ratio, double z_near, double z_far) {
+		Matrix4d perspective_projection_matrix;
 		perspective_projection_matrix(0, 0) = fov / aspect_ratio;
 		perspective_projection_matrix(1, 1) = fov;
 		perspective_projection_matrix(2, 2) = (z_near + z_far) / (z_near - z_far);
 		perspective_projection_matrix(2, 3) = (2 * z_near * z_far) / (z_near - z_far);
 		perspective_projection_matrix(3, 2) = -1;
+		return perspective_projection_matrix;
 	}
 
 	void render(Face& face, Matrix4f projectionMatrix, VectorXf vertices, VectorXf colors);
