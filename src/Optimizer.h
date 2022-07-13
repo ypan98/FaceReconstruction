@@ -78,7 +78,40 @@ private:
     const unsigned size;
 };
 
+class GeometryConsistencyEnergy {
+public:
+    GeometryConsistencyEnergy(const double& _geometryWeight, const VectorXf& alpha, const VectorXf& gamma, const Vector3i& vertex_indices, const FaceModel* _faceModel,
+        const double& depth_source, const Matrix4d& projection_matrix) :
+        _geometryWeight(_geometryWeight),
+        alpha(alpha),
+        gamma(gamma),
+        vertex_indices(vertex_indices),
+        _faceModel(_faceModel),
+        depth_source(depth_source),
+        projection_matrix(projection_matrix)
+    { }
 
+    template <typename T>
+    bool operator() (const T const* alpha, const T const* gamma) const{
+        Vector4d 
+        // mean
+        for (unsigned i = 0; i < 3; i++) vertex[i] = T((*faceModel).getShapeMeanElem(3 * vertexIdx + i)) + T((*faceModel).getExpMeanElem(3 * vertexIdx + i));
+        // shape basis
+        for (unsigned i = 0; i < BFM_ALPHA_SIZE; i++)
+            for (unsigned j = 0; j < 3; j++) vertex[j] += T((*faceModel).getShapeBasisStdMultipliedElem(3 * vertexIdx + j, i)) * alpha[i];
+        // expression basis
+        for (unsigned i = 0; i < BFM_GAMMA_SIZE; i++)
+            for (unsigned j = 0; j < 3; j++) vertex[j] += T((*faceModel).getExpBasisStdMultipliedElem(3 * vertexIdx + j, i)) * gamma[i];
+
+
+    }
+private:
+    const double _geometryWeight, depth_source;
+    const VectorXf alpha, gamma;
+    const Vector3i vertex_indices;
+    const FaceModel* _faceModel;
+    const Matrix4d projection_matrix;
+};
 class Optimizer {
 
 public:
