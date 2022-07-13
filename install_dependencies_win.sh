@@ -5,7 +5,7 @@ PWD=$(pwd)
 set -x
 set -e
 
-CMAKE_GENERATOR_OPTIONS=-G$1
+CMAKE_GENERATOR_OPTIONS=-G$"Visual Studio 17 2022"
 
 # Get the number of cores which will be later used for configuring the compiling setting
 NUM_CORES=`getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu || echo 1`

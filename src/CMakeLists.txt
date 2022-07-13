@@ -12,7 +12,7 @@ set(LIBRARY_DIR "${PROJECT_DIR}/libs")
 if(WIN32)
     set(Eigen3_DIR "${LIBRARY_DIR}/eigen/share/eigen3/cmake")
     set(glog_DIR "${LIBRARY_DIR}/glog/lib/cmake/glog")
-    set(Ceres_DIR "${LIBRARY_DIR}/ceres/CMake")
+    set(Ceres_DIR "${LIBRARY_DIR}/ceres/lib/cmake/Ceres")
     set(OpenCV_DIR "${LIBRARY_DIR}/opencv")
     set(HDF5_DIR "${LIBRARY_DIR}/hdf5/cmake")
 
@@ -67,7 +67,7 @@ endif()
 
 set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE ON)
 set(CUDA_SEPARABLE_COMPILATION ON)
-add_definitions("-D_DISABLE_EXTENDED_ALIGNED_STORAGE")
+add_definitions("-D_DISABLE_EXTENDED_ALIGNED_STORAGE -O3")
 
 if (MSVC)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /bigobj")
@@ -81,7 +81,6 @@ file(GLOB SOURCE_FILES
 )
 
 add_executable(face_reconstruction ${SOURCE_FILES})
-add_compile_options("-fopenmp")
 
 if(WIN32)
     target_link_libraries(face_reconstruction ${CERES_LIBRARIES} ${OpenCV_LIBS} ${HDF5_LIBRARIES} ${GLEW_LIBRARIES} ${GLFW_LIBRARIES} ${OPENGL32_LIBRARY})

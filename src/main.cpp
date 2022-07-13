@@ -37,13 +37,9 @@ void performTask() {
 	{
 		// reconstruct face
 		Face sourceFace = Face("sample1", "BFM17");
-		// randomize for testing
 		optimizer.optimize(sourceFace);
 		// write out mesh
 		sourceFace.writeReconstructedFace();
-		cout << sourceFace.getAlpha() << endl;
-		cout << sourceFace.getExtrinsics() << endl;
-		cout << sourceFace.getIntrinsics() << endl;
 		break;
 	}
 	case 2:
@@ -94,6 +90,7 @@ void performTask() {
 int main(int argc, char** argv) {
 	omp_set_num_threads(omp_get_max_threads());
 	google::InitGoogleLogging(argv[0]);
+	omp_set_num_threads(omp_get_max_threads());
 	handleMenu();
 	performTask();
 	return 0;
