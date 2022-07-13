@@ -104,12 +104,12 @@ public:
 	}
 
 	VectorXd calculateVerticesDefault() {
-		return faceModel.getShapeMean() + ((faceModel.getShapeVar().cwiseSqrt().asDiagonal() * faceModel.getShapeBasis().transpose()).transpose()) * alpha +
-			faceModel.getExpMean() + ((faceModel.getExpVar().cwiseSqrt().asDiagonal() * faceModel.getExpBasis().transpose()).transpose()) * gamma;
+		return faceModel.getShapeMean() + faceModel.getShapeBasis() * alpha +
+			faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
 	}
 
 	VectorXd calculateColorsDefault() {
-		return faceModel.getColorMean() + ((faceModel.getColorVar().cwiseSqrt().asDiagonal() * faceModel.getColorBasis().transpose()).transpose()) * beta;
+		return faceModel.getColorMean() + faceModel.getColorBasis() * beta;
 	}
 private:
 	VectorXd alpha, beta, gamma;	// parameters to optimize
