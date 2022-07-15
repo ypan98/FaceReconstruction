@@ -25,7 +25,6 @@ public:
 
     template <typename T>
     bool operator()(const T const* alpha, const T const* gamma, const T* const extrinsicsArr, const T const* intrinsicsArr, T* residuals) const {
-        // ************* USING EIGEN (very slow...) ***************
         Map<const Matrix<T, -1, 1> > alphaMap(alpha, BFM_ALPHA_SIZE);
         Map<const Matrix<T, -1, 1> > gammaMap(gamma, BFM_GAMMA_SIZE);
         // calculate vertex
@@ -33,17 +32,6 @@ public:
             + (*faceModel).getExpMeanBlock(3 * vertexIdx, 3).cast<T>()
             + (*faceModel).getShapeBasisRowBlock(3 * vertexIdx, 3) * alphaMap
             + (*faceModel).getExpBasisRowBlock(3 * vertexIdx, 3) * gammaMap;
-
-        // ************* MAKING CALCULATIONS WITH LOOP *************
-        //T vertex[3];
-        //// mean
-        //for (unsigned i = 0; i < 3; i++) vertex[i] = T((*faceModel).getShapeMeanElem(3 * vertexIdx + i)) + T((*faceModel).getExpMeanElem(3 * vertexIdx + i));
-        //// shape basis
-        //for (unsigned i = 0; i < BFM_ALPHA_SIZE; i++) 
-        //    for (unsigned j = 0; j < 3; j++) vertex[j] += T((*faceModel).getShapeBasisElem(3*vertexIdx + j, i)) * alpha[i];
-        //// expression basis
-        //for (unsigned i = 0; i < BFM_GAMMA_SIZE; i++)
-        //    for (unsigned j = 0; j < 3; j++) vertex[j] += T((*faceModel).getExpBasisElem(3*vertexIdx + j, i)) * gamma[i];
 
         // apply pose (extrinsics)
         T vertex_transformed[3];
@@ -140,10 +128,10 @@ public:
         // ...
         // SOLVE OPTIMIZATION
         ceres::Solver::Options options;
-        options.dense_linear_algebra_library_type = ceres::CUDA;
+        // options.dense_linear_algebra_library_type = ceres::CUDA;
         options.num_threads = omp_get_max_threads();
         options.max_num_iterations = 500;
-        options.linear_solver_type = ceres::DENSE_QR;
+        options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
         // options.preconditioner_type = ceres::JACOBI;
         options.minimizer_progress_to_stdout = true;
         ceres::Solver::Summary summary;
