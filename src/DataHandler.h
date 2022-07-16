@@ -100,8 +100,8 @@ public:
             for (int u = 1; u < width - 1; ++u) {
                 unsigned int idx = v * width + u; // linearized index
 
-                const double du = 0.5d * (depthMap(v, u + 1) - depthMap(v, u - 1));
-                const double dv = 0.5d * (depthMap(v + 1, u) - depthMap(v - 1, u));
+                const double du = 0.5 * (depthMap(v, u + 1) - depthMap(v, u - 1));
+                const double dv = 0.5 * (depthMap(v + 1, u) - depthMap(v - 1, u));
                 if (!std::isfinite(du) || !std::isfinite(dv) || abs(du) > maxDistanceHalved || abs(dv) > maxDistanceHalved) {
                     normals[idx] = Vector3d(MINF, MINF, MINF);
                     continue;
