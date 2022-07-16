@@ -1,9 +1,13 @@
 #pragma once
 #include "DataHandler.h"
 
-#define BFM_ALPHA_SIZE 199
-#define BFM_BETA_SIZE 199
-#define BFM_GAMMA_SIZE 100
+//#define BFM_ALPHA_SIZE 199
+//#define BFM_BETA_SIZE 199
+//#define BFM_GAMMA_SIZE 100
+
+#define BFM_ALPHA_SIZE 50
+#define BFM_BETA_SIZE 50
+#define BFM_GAMMA_SIZE 50
 
 // Class for a face model
 class FaceModel{
@@ -132,6 +136,10 @@ public:
 
 	MatrixX3i getTriangulation() const {
 		return triangulation;
+	}
+
+	Vector3i getTriangulationByRow(int row) const {
+		return triangulation.row(row);
 	}
 
 	unsigned getTriangulationRows() const {

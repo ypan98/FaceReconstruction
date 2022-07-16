@@ -63,11 +63,11 @@ public:
 			cv::Mat rgbMat[3];
 			split(image, rgbMat);	//split source
 			MatrixXd r, g, b;
-			cv::cv2eigen(rgbMat[0], r);
+			cv::cv2eigen(rgbMat[2], r);
 			rgb[0] = r;
 			cv::cv2eigen(rgbMat[1], g);
 			rgb[1] = g;
-			cv::cv2eigen(rgbMat[2], b);
+			cv::cv2eigen(rgbMat[0], b);
 			rgb[2] = b;
 		}
 		catch (cv::Exception& e)
@@ -97,9 +97,10 @@ public:
 		if (h5d < 0) std::cerr << "Error reading basis from: " << faceModelName << std::endl;
 		else {
 			std::vector<unsigned int> shape = get_h5_dataset_shape(h5d);
-			basis = MatrixXd(shape[1], shape[0]);
-			H5Dread(h5d, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &basis(0));
-			basis.transposeInPlace();
+			MatrixXd basis_ = MatrixXd(shape[1], shape[0]);
+			H5Dread(h5d, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &basis_(0));
+			basis_.transposeInPlace();
+			basis = basis_.block(0, 0, shape[0], 50);
 		}
 		H5Dclose(h5d);
 		H5Fclose(h5file);
@@ -123,8 +124,10 @@ public:
 		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP.at(std::make_pair(varianceName, "variance")).c_str(), H5P_DEFAULT);
 		if (h5d < 0) std::cerr << "Error reading variance from: " << faceModelName << std::endl;
 		else {
-			variance = VectorXd(get_h5_dataset_shape(h5d)[0]);
-			H5Dread(h5d, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &variance(0));
+			VectorXd variance_ = VectorXd(get_h5_dataset_shape(h5d)[0]);
+			H5Dread(h5d, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &variance_(0));
+			variance = variance_.block(0, 0, 50, 1);
+
 		}
 		H5Dclose(h5d);
 		H5Fclose(h5file);

@@ -31,7 +31,7 @@ public:
 
 	Vector2d getLandmark(unsigned i) { return landmarks.row(i); }
 
-	std::vector<MatrixXd> detRGB() { return rgb; }
+	std::vector<MatrixXd> getRGB() { return rgb; }
 
 private:
 	std::string fileName;	// name of the image file

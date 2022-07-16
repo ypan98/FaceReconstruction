@@ -7,7 +7,7 @@
 
 using namespace std;
 
-vector<string> taskOptions{ "Face reconstruction", "Expression transfer", "Rasterize random face" };
+vector<string> taskOptions{ "Face reconstruction", "Expression transfer"};
 int taskOption = -1;
 // For now we only hadle sample images case
 // vector<string> inputOptions{ "Use sample image(s)" };
@@ -36,8 +36,22 @@ void performTask() {
 	case 1:
 	{
 		// reconstruct face
-		Face sourceFace = Face("sample1", "BFM17");
+		auto render = Renderer::Get();
+		Face sourceFace = Face("sample2", "BFM17");
+		render.initialiaze_rendering_context(sourceFace.getFaceModel(), 256, 256);
+		Matrix4d perspective_projection = render.get_perspective_projection_matrix(double(50), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
+			double(1), double(100000));
+		sourceFace.setIntrinsics(perspective_projection);
 		optimizer.optimize(sourceFace);
+
+		Matrix4f full_projection_matrix = sourceFace.getFullProjectionMatrix().transpose().cast<float>();
+		VectorXf vertices = sourceFace.calculateVerticesDefault().cast<float>();
+		VectorXf colors = sourceFace.calculateColorsDefault().cast<float>();
+		VectorXf sh_coefficients = sourceFace.getSHCoefficients().cast<float>();
+		render.render(sourceFace, full_projection_matrix, vertices, colors, sh_coefficients);
+		imshow("lol", render.get_color_buffer());
+		imshow("normal", render.get_pixel_normal_buffer());
+		cv::waitKey(0);
 		// write out mesh
 		sourceFace.writeReconstructedFace();
 		break;
@@ -55,34 +69,6 @@ void performTask() {
 		targetFace.writeReconstructedFace();
 		break;
 	}
-	case 3:
-	{
-		auto& renderer = Renderer::Get();
-		Face face;
-		face.randomizeParameters();
-		renderer.initialiaze_rendering_context(face.getFaceModel(), 720, 720);
-
-		// Initialize the default projection matrix which moves the face to origin
-		double scale_factor = 1 / 100.;
-		MatrixXd coords = face.calculateVerticesDefault().reshaped(3, face.getFaceModel().getNumVertices()).transpose();
-		Vector3d mean = coords.colwise().mean();
-		Matrix4d projection_matrix = Matrix4d::Identity() * scale_factor;
-		projection_matrix.block(0, 3, 3, 1) = -mean * scale_factor;
-		projection_matrix(3, 3) = 1.;
-		
-		VectorXf vertices = face.calculateVerticesDefault().cast<float>();
-		VectorXf colors = face.calculateColorsDefault().cast<float>();
-
-		renderer.render(face, projection_matrix.transpose().cast<float>(), vertices, colors);
-
-		cv::Mat depth_to_visualize;
-		cv::normalize(renderer.get_depth_buffer(), depth_to_visualize, 0, 255, cv::NORM_MINMAX, CV_8UC1);
-		cv::imwrite("../../data/samples/2d face image/sample_image_depth.png", depth_to_visualize);
-		cv::imwrite("../../data/samples/2d face image/sample_image.png", renderer.get_color_buffer());
-		break;
-	}
-	default:
-		break;
 	}
 }
 

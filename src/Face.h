@@ -12,8 +12,10 @@ public:
 		alpha = VectorXd::Zero(faceModel.getAlphaSize());
 		beta = VectorXd::Zero(faceModel.getBetaSize());
 		gamma = VectorXd::Zero(faceModel.getGammaSize());
-		intrinsics = Matrix3d::Identity();
+		sh_coefficients = VectorXd::Random(27) * 1.f;
+		intrinsics = Matrix4d::Identity();
 		extrinsics = Matrix4d::Identity();
+		extrinsics(2, 3) = -400;
 	}
 
 	// Calls DataHandler to write the recontructed mesh in .obj format
@@ -36,10 +38,11 @@ public:
 	}
 
 	// Randomize parameters (for testing purpose)
-	void randomizeParameters(double scaleAlpha = 1, double scaleBeta = 1, double scaleGamma = 1) {
+	void randomizeParameters(double scaleAlpha = 1, double scaleBeta = 1, double scaleGamma = 1, double scaleSHCoefficients = 1) {
 		alpha = VectorXd::Random(faceModel.getAlphaSize()) * scaleAlpha;
 		beta = VectorXd::Random(faceModel.getBetaSize()) * scaleBeta;
 		gamma = VectorXd::Random(faceModel.getGammaSize()) * scaleGamma;
+		sh_coefficients = VectorXd::Random(27) * scaleSHCoefficients;
 	}
 
 	// construct the mesh with alpha, beta, gamma and face model variables
@@ -71,10 +74,16 @@ public:
 	VectorXd getGamma() {
 		return gamma;
 	}
-	void setIntrinsics(Matrix3d _intrinsics) {
+	void setSHCoefficients(VectorXd _sh_coefficients) {
+		sh_coefficients = _sh_coefficients;
+	}
+	VectorXd getSHCoefficients() {
+		return sh_coefficients;
+	}
+	void setIntrinsics(Matrix4d _intrinsics) {
 		intrinsics = _intrinsics;
 	}
-	Matrix3d getIntrinsics() {
+	Matrix4d getIntrinsics() {
 		return intrinsics;
 	}
 	void setExtrinsics(Matrix4d _extrinsics) {
@@ -83,6 +92,10 @@ public:
 	Matrix4d getExtrinsics() {
 		return extrinsics;
 	}
+	Matrix4d getFullProjectionMatrix() {
+		return intrinsics * extrinsics;
+	}
+
 	Image getImage() {
 		return image;
 	}
@@ -112,10 +125,9 @@ public:
 		return faceModel.getColorMean() + faceModel.getColorBasis() * beta;
 	}
 private:
-	VectorXd alpha, beta, gamma;	// parameters to optimize
-	Matrix3d intrinsics;	// given by camera manufacturer, otherwise hardcode it?
+	VectorXd alpha, beta, gamma, sh_coefficients;	// parameters to optimize
+	Matrix4d intrinsics;	// given by camera manufacturer, otherwise hardcode it?
 	Matrix4d extrinsics;	// given by optimization
 	Image image;	// the corresponding image
 	FaceModel faceModel;	// the used face model, ie BFM17
-	MatrixX3d normals; // normal of the vertices
 };
