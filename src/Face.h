@@ -12,7 +12,9 @@ public:
 		alpha = VectorXd::Zero(faceModel.getAlphaSize());
 		beta = VectorXd::Zero(faceModel.getBetaSize());
 		gamma = VectorXd::Zero(faceModel.getGammaSize());
-		sh_coefficients = VectorXd::Random(27) * 1.f;
+		sh_red_coefficients = VectorXd::Ones(9);
+		sh_green_coefficients = VectorXd::Ones(9);
+		sh_blue_coefficients = VectorXd::Ones(9);
 		intrinsics = Matrix4d::Identity();
 		extrinsics = Matrix4d::Identity();
 		extrinsics(2, 3) = -400;
@@ -38,11 +40,10 @@ public:
 	}
 
 	// Randomize parameters (for testing purpose)
-	void randomizeParameters(double scaleAlpha = 1, double scaleBeta = 1, double scaleGamma = 1, double scaleSHCoefficients = 1) {
+	void randomizeParameters(double scaleAlpha = 1, double scaleBeta = 1, double scaleGamma = 1) {
 		alpha = VectorXd::Random(faceModel.getAlphaSize()) * scaleAlpha;
 		beta = VectorXd::Random(faceModel.getBetaSize()) * scaleBeta;
 		gamma = VectorXd::Random(faceModel.getGammaSize()) * scaleGamma;
-		sh_coefficients = VectorXd::Random(27) * scaleSHCoefficients;
 	}
 
 	// construct the mesh with alpha, beta, gamma and face model variables
@@ -74,11 +75,23 @@ public:
 	VectorXd getGamma() {
 		return gamma;
 	}
-	void setSHCoefficients(VectorXd _sh_coefficients) {
-		sh_coefficients = _sh_coefficients;
+	void setSHRedCoefficients(VectorXd _sh_red_coefficients) {
+		sh_red_coefficients = _sh_red_coefficients;
 	}
-	VectorXd getSHCoefficients() {
-		return sh_coefficients;
+	VectorXd getSHRedCoefficients() {
+		return sh_red_coefficients;
+	}
+	void setSHGreenCoefficients(VectorXd _sh_green_coefficients) {
+		sh_green_coefficients = _sh_green_coefficients;
+	}
+	VectorXd getSHGreenCoefficients() {
+		return sh_green_coefficients;
+	}
+	void setSHBlueCoefficients(VectorXd _sh_blue_coefficients) {
+		sh_blue_coefficients = _sh_blue_coefficients;
+	}
+	VectorXd getSHBlueCoefficients() {
+		return sh_blue_coefficients;
 	}
 	void setIntrinsics(Matrix4d _intrinsics) {
 		intrinsics = _intrinsics;
@@ -125,7 +138,7 @@ public:
 		return faceModel.getColorMean() + faceModel.getColorBasis() * beta;
 	}
 private:
-	VectorXd alpha, beta, gamma, sh_coefficients;	// parameters to optimize
+	VectorXd alpha, beta, gamma, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients;	// parameters to optimize
 	Matrix4d intrinsics;	// given by camera manufacturer, otherwise hardcode it?
 	Matrix4d extrinsics;	// given by optimization
 	Image image;	// the corresponding image
