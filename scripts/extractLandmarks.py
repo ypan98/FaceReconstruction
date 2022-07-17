@@ -10,8 +10,11 @@ import cv2
 import numpy as np
 import torch
 
-isImage = True
-sampleName = "sample2"
+IS_IMG = True
+SHOW_LM = False
+
+
+sampleName = "sampleHighRes"
 itemPath = "../data/samples/rgb/" + sampleName + ".jpeg"
 landmarkOutputPath = "../data/samples/landmark/" + sampleName + ".txt"
 
@@ -23,7 +26,7 @@ if torch.cuda.is_available():
 model = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, device=device, face_detector='sfd')
 
 # detect landmarks
-if isImage:
+if IS_IMG:
     img = cv2.imread(itemPath)
     landmarks = model.get_landmarks_from_image(img)
 else:
@@ -32,6 +35,13 @@ else:
 
 # write to file
 landmarks = np.array(landmarks)
-if isImage:
+if IS_IMG:
     landmarks = landmarks.squeeze()
 np.savetxt(landmarkOutputPath, landmarks)
+
+if SHOW_LM:
+    landmarks = landmarks.astype(int)
+    for pixel in landmarks:
+        image = cv2.circle(img, (pixel[0],pixel[1]), radius=2, color=(255, 0, 0), thickness=-1)
+    cv2.imshow("asd", img)
+    cv2.waitKey(0) 

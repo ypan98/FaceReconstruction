@@ -31,7 +31,7 @@ void handleMenu() {
 }
 
 void performTask() {
-	Optimizer optimizer;
+	Optimizer optimizer(1, 1.0/3, 1.0/3, 1.0/3);
 	switch (taskOption) {
 	case 1:
 	{

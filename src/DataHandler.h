@@ -90,6 +90,43 @@ public:
 			std::cerr << e.what() << std::endl;
 		}
 	}
+		
+	static void computeNormals(MatrixXd& depthMap, std::vector<Vector3d>& normals){
+		const double maxDistanceHalved = 0.05;
+		int height = depthMap.rows();
+		int width = depthMap.cols();
+
+		for (int v = 1; v < height - 1; ++v) {
+            for (int u = 1; u < width - 1; ++u) {
+                unsigned int idx = v * width + u; // linearized index
+
+                const double du = 0.5 * (depthMap(v, u + 1) - depthMap(v, u - 1));
+                const double dv = 0.5 * (depthMap(v + 1, u) - depthMap(v - 1, u));
+                if (!std::isfinite(du) || !std::isfinite(dv) || abs(du) > maxDistanceHalved || abs(dv) > maxDistanceHalved) {
+                    normals[idx] = Vector3d(MINF, MINF, MINF);
+                    continue;
+                }
+
+                // Compute the normals using central differences. 
+                // normalsTmp[idx] = Vector3f(1, , 1); // Needs to be replaced.
+                Vector3d a(0,2,du);
+                Vector3d b(2,0,dv);
+                normals[idx] = Vector3d(a(1)*b(2)-b(1)*a(2),-(a(0)*b(2)-b(0)*a(2)),a(0)*b(1)-b(0)*a(1));
+                normals[idx].normalize();
+            }
+        }
+
+        // We set invalid normals for border regions.
+        for (int u = 0; u < width; ++u) {
+            normals[u] = Vector3d(MINF, MINF, MINF);
+            normals[u + (height - 1) * width] = Vector3d(MINF, MINF, MINF);
+        }
+        for (int v = 0; v < height; ++v) {
+            normals[v * width] = Vector3d(MINF, MINF, MINF);
+            normals[(width - 1) + v * width] = Vector3d(MINF, MINF, MINF);
+        }
+	}
+
 	// read basis from hdf5 file
 	static void readBasis(std::string faceModelName, std::string basisName, MatrixXd& basis) {
 		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP.at(faceModelName).c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
