@@ -5,9 +5,9 @@
 //#define BFM_BETA_SIZE 199
 //#define BFM_GAMMA_SIZE 100
 
-#define BFM_ALPHA_SIZE 50
-#define BFM_BETA_SIZE 50
-#define BFM_GAMMA_SIZE 50
+#define BFM_ALPHA_SIZE 76
+#define BFM_BETA_SIZE 76
+#define BFM_GAMMA_SIZE 76
 
 // Class for a face model
 class FaceModel{

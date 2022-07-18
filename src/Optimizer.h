@@ -404,7 +404,7 @@ class Optimizer {
 
 public:
     // maybe add some options later when we are done with the basic version. Like GN/LM, Cuda/Cpu....
-    Optimizer(double _landmakrWeight = 1, double _embeddingWeight=1, double _colorWeight = 1, double _shapeRegWeight = 0.7, double _expRegWeight = 0.1, double _coloRegWeight = 0.01, int _maxIteration = 7) {
+    Optimizer(double _landmakrWeight = 1, double _embeddingWeight=1, double _colorWeight = 1, double _shapeRegWeight = 2., double _expRegWeight = 2., double _coloRegWeight = 2., int _maxIteration = 7) {
         landmarkWeight = _landmakrWeight;
         embeddingWeight = _embeddingWeight;
         colorWeight = _colorWeight;

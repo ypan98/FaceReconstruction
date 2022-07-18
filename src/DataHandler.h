@@ -137,7 +137,7 @@ public:
 			MatrixXd basis_ = MatrixXd(shape[1], shape[0]);
 			H5Dread(h5d, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &basis_(0));
 			basis_.transposeInPlace();
-			basis = basis_.block(0, 0, shape[0], 50);
+			basis = basis_.block(0, 0, shape[0], 76);
 		}
 		H5Dclose(h5d);
 		H5Fclose(h5file);
@@ -163,8 +163,7 @@ public:
 		else {
 			VectorXd variance_ = VectorXd(get_h5_dataset_shape(h5d)[0]);
 			H5Dread(h5d, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &variance_(0));
-			variance = variance_.block(0, 0, 50, 1);
-
+			variance = variance_.block(0, 0, 76, 1);
 		}
 		H5Dclose(h5d);
 		H5Fclose(h5file);

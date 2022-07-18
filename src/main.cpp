@@ -31,13 +31,13 @@ void handleMenu() {
 }
 
 void performTask() {
-	Optimizer optimizer(1, 1.0/3, 1.0/3, 1.0/3);
+	Optimizer optimizer;
 	switch (taskOption) {
 	case 1:
 	{
 		// reconstruct face
 		auto render = Renderer::Get();
-		Face sourceFace = Face("sample1", "BFM17");
+		Face sourceFace = Face("sample3", "BFM17");
 		render.initialiaze_rendering_context(sourceFace.getFaceModel(), sourceFace.getImage().getHeight(), sourceFace.getImage().getWidth());
 		Matrix4d perspective_projection = render.get_perspective_projection_matrix(double(50), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
 			double(1), double(100000));
