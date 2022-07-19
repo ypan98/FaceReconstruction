@@ -12,9 +12,9 @@ public:
 		alpha = VectorXd::Zero(faceModel.getAlphaSize());
 		beta = VectorXd::Zero(faceModel.getBetaSize());
 		gamma = VectorXd::Zero(faceModel.getGammaSize());
-		sh_red_coefficients = VectorXd::Zero(9);
-		sh_green_coefficients = VectorXd::Zero(9);
-		sh_blue_coefficients = VectorXd::Zero(9);
+		sh_red_coefficients = VectorXd::Ones(9);
+		sh_green_coefficients = VectorXd::Ones(9);
+		sh_blue_coefficients = VectorXd::Ones(9);
 		shape = faceModel.getShapeMean();
 		color = faceModel.getColorMean();
 		intrinsics = Matrix4d::Identity();

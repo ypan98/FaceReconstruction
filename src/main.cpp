@@ -37,7 +37,7 @@ void performTask() {
 	{
 		// reconstruct face
 		auto render = Renderer::Get();
-		Face sourceFace = Face("sample1", "BFM17");
+		Face sourceFace = Face("sample2", "BFM17");
 		render.initialiaze_rendering_context(sourceFace.getFaceModel(), sourceFace.getImage().getHeight(), sourceFace.getImage().getWidth());
 		Matrix4d perspective_projection = render.get_perspective_projection_matrix(double(60), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
 			double(1), double(100000));
@@ -54,7 +54,10 @@ void performTask() {
 		sourceFace.setColor(render.get_re_rendered_vertex_color().cast<double>());
 		imshow("face", render.get_color_buffer());
 		cv::waitKey(0);
-		
+		cout << sourceFace.getSHRedCoefficients() << endl;
+		cout << sourceFace.getSHGreenCoefficients() << endl;
+		cout << sourceFace.getSHBlueCoefficients() << endl;
+
 		// write out mesh
 		sourceFace.writeReconstructedFace();
 		break;

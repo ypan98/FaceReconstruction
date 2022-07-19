@@ -199,6 +199,16 @@ __global__ void compute_vertex_colors(float* vertex_color_buffer, float* vertex_
 		vertex_color_buffer[3 * vertex_index] *= red_sh / pi;
 		vertex_color_buffer[3 * vertex_index + 1] *= green_sh / pi;
 		vertex_color_buffer[3 * vertex_index + 2] *= blue_sh / pi;
+
+		if (vertex_color_buffer[3 * vertex_index] < 0.) {
+			vertex_color_buffer[3 * vertex_index] = 0.;
+		}
+		if (vertex_color_buffer[3 * vertex_index + 1] < 0.) {
+			vertex_color_buffer[3 * vertex_index + 1] = 0.;
+		}
+		if (vertex_color_buffer[3 * vertex_index + 2] < 0.) {
+			vertex_color_buffer[3 * vertex_index + 2] = 0.;
+		}
 	}
 }
 
