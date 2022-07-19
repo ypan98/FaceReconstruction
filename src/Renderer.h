@@ -45,6 +45,10 @@ public:
 		return pixel_triangle_normals_buffer;
 	}
 
+	VectorXf get_re_rendered_vertex_color() {
+		return re_rendered_vertex_color;
+	}
+
 	Matrix4d get_perspective_projection_matrix(double fov, double aspect_ratio, double z_near=0.1, double z_far=100000.) {
 		Matrix4d perspective_projection_matrix = Matrix4d::Zero();
 		perspective_projection_matrix(0, 0) = fov / aspect_ratio;
@@ -86,4 +90,5 @@ private:
 
 	// Cpu buffers used to receive information returned by render
 	cv::Mat color_img, depth_img, pixel_bary_coord_buffer, pixel_triangle_buffer, pixel_triangle_normals_buffer;
+	VectorXf re_rendered_vertex_color;
 };

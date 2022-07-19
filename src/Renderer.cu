@@ -195,6 +195,7 @@ __global__ void compute_vertex_colors(float* vertex_color_buffer, float* vertex_
 			green_sh += sh_coefficients[i + 9] * sh_kth_basis;
 			blue_sh += sh_coefficients[i + 18] * sh_kth_basis;
 		}
+
 		vertex_color_buffer[3 * vertex_index] *= red_sh / pi;
 		vertex_color_buffer[3 * vertex_index + 1] *= green_sh / pi;
 		vertex_color_buffer[3 * vertex_index + 2] *= blue_sh / pi;
@@ -304,7 +305,6 @@ __global__ void raster_triangle(TriangleToRasterize* triangles, unsigned char* c
 							alpha *= d * triangle.one_over_z0;
 							beta *= d * triangle.one_over_z1;
 							gamma *= d * triangle.one_over_z2;
-
 							// attributes interpolation
 							double red_ = alpha * static_cast<double>(triangle.v0.color.x) + beta * static_cast<double>(triangle.v1.color.x) + gamma * static_cast<double>(triangle.v2.color.x);
 							double green_ = alpha * static_cast<double>(triangle.v0.color.y) + beta * static_cast<double>(triangle.v1.color.y) + gamma * static_cast<double>(triangle.v2.color.y);
@@ -404,6 +404,7 @@ void Renderer::initialiaze_rendering_context(FaceModel& face_model, int height, 
 
 	num_vertices = face_model.getNumVertices();
 	num_triangles = triangles.cols();
+	re_rendered_vertex_color = VectorXf::Zero(num_vertices * 3);
 
 	// Create CUDA strams
 	for (int i = 0; i < 13; ++i) {
@@ -489,5 +490,6 @@ void Renderer::render(Matrix4f& mvp_matrix, Matrix4f& mv_matrix, VectorXf& verti
 	cudaMemcpyAsync(pixel_bary_coord_buffer.data, device_pixel_bary_coord, viewport_height * viewport_width * 3 * sizeof(double), cudaMemcpyDeviceToHost);
 	cudaMemcpyAsync(pixel_triangle_buffer.data, device_pixel_triangle, viewport_height * viewport_width * sizeof(int), cudaMemcpyDeviceToHost);
 	cudaMemcpyAsync(pixel_triangle_normals_buffer.data, device_pixel_triangle_normals, viewport_height * viewport_width * 9 * sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpyAsync(re_rendered_vertex_color.data(), device_colors, num_vertices * 3 * sizeof(float), cudaMemcpyDeviceToHost);
 	cudaDeviceSynchronize();
 }

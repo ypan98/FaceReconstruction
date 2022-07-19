@@ -37,22 +37,24 @@ void performTask() {
 	{
 		// reconstruct face
 		auto render = Renderer::Get();
-		Face sourceFace = Face("sample3", "BFM17");
+		Face sourceFace = Face("sample1", "BFM17");
 		render.initialiaze_rendering_context(sourceFace.getFaceModel(), sourceFace.getImage().getHeight(), sourceFace.getImage().getWidth());
-		Matrix4d perspective_projection = render.get_perspective_projection_matrix(double(50), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
+		Matrix4d perspective_projection = render.get_perspective_projection_matrix(double(60), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
 			double(1), double(100000));
 		sourceFace.setIntrinsics(perspective_projection);
-		optimizer.optimize(sourceFace);
+		optimizer.optimize(sourceFace, 0);
 		Matrix4f mvp_matrix = sourceFace.getFullProjectionMatrix().transpose().cast<float>();
 		Matrix4f mv_matrix = sourceFace.getExtrinsics().transpose().cast<float>();
-		VectorXf vertices = sourceFace.calculateVerticesDefault().cast<float>();
-		VectorXf colors = sourceFace.calculateColorsDefault().cast<float>();
+		VectorXf vertices = sourceFace.getShape().cast<float>();
+		VectorXf colors = sourceFace.getColor().cast<float>();
 		VectorXf sh_red_coefficients = sourceFace.getSHRedCoefficients().cast<float>();
 		VectorXf sh_green_coefficients = sourceFace.getSHGreenCoefficients().cast<float>();
 		VectorXf sh_blue_coefficients = sourceFace.getSHBlueCoefficients().cast<float>();
 		render.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients);
-		imshow("lol", render.get_color_buffer());
+		sourceFace.setColor(render.get_re_rendered_vertex_color().cast<double>());
+		imshow("face", render.get_color_buffer());
 		cv::waitKey(0);
+		
 		// write out mesh
 		sourceFace.writeReconstructedFace();
 		break;
@@ -61,10 +63,10 @@ void performTask() {
 	{
 		// reconstruct source face
 		Face sourceFace = Face("sample1", "BFM17");
-		optimizer.optimize(sourceFace);
+		optimizer.optimize(sourceFace, 0);
 		// reconstruct target face
 		Face targetFace = Face("sample2", "BFM17");
-		optimizer.optimize(targetFace);
+		optimizer.optimize(targetFace, 0);
 		// transfer expression and write out mesh
 		targetFace.transferExpression(sourceFace);
 		targetFace.writeReconstructedFace();

@@ -12,9 +12,11 @@ public:
 		alpha = VectorXd::Zero(faceModel.getAlphaSize());
 		beta = VectorXd::Zero(faceModel.getBetaSize());
 		gamma = VectorXd::Zero(faceModel.getGammaSize());
-		sh_red_coefficients = VectorXd::Ones(9);
-		sh_green_coefficients = VectorXd::Ones(9);
-		sh_blue_coefficients = VectorXd::Ones(9);
+		sh_red_coefficients = VectorXd::Zero(9);
+		sh_green_coefficients = VectorXd::Zero(9);
+		sh_blue_coefficients = VectorXd::Zero(9);
+		shape = faceModel.getShapeMean();
+		color = faceModel.getColorMean();
 		intrinsics = Matrix4d::Identity();
 		extrinsics = Matrix4d::Identity();
 		extrinsics(2, 3) = -400;
@@ -49,8 +51,14 @@ public:
 	// construct the mesh with alpha, beta, gamma and face model variables
 	Mesh toMesh() {
 		Mesh mesh;
-		mesh.vertices = calculateVertices();
-		mesh.colors = calculateColors();
+		MatrixXd vertices = shape;
+		vertices.resize(3, faceModel.getNumVertices());
+		mesh.vertices = vertices.transpose();
+
+		MatrixXd colors = color;
+		colors.resize(3, faceModel.getNumVertices());
+		mesh.colors = colors.transpose();
+
 		mesh.faces = faceModel.getTriangulation();
 		return mesh;
 	}
@@ -128,17 +136,34 @@ public:
 		colors.resize(3, faceModel.getNumVertices());
 		return colors.transpose();
 	}
-
 	VectorXd calculateVerticesDefault() {
 		return faceModel.getShapeMean() + faceModel.getShapeBasis() * alpha +
 			faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
 	}
-
 	VectorXd calculateColorsDefault() {
 		return faceModel.getColorMean() + faceModel.getColorBasis() * beta;
 	}
+	VectorXd getShapeBlock(unsigned startRow, unsigned numRows) const {
+		return shape.block(startRow, 0, numRows, 1);
+	}
+	VectorXd getColorBlock(unsigned startRow, unsigned numRows) const {
+		return color.block(startRow, 0, numRows, 1);
+	}
+	void setShape(VectorXd shape_) {
+		shape = shape_;
+	}
+	VectorXd getShape() const {
+		return shape;
+	}
+	void setColor(VectorXd color_) {
+		color = color_;
+	}
+	VectorXd getColor() const {
+		return color;
+	}
 private:
 	VectorXd alpha, beta, gamma, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients;	// parameters to optimize
+	VectorXd shape, color;
 	Matrix4d intrinsics;	// given by camera manufacturer, otherwise hardcode it?
 	Matrix4d extrinsics;	// given by optimization
 	Image image;	// the corresponding image

@@ -51,6 +51,7 @@ public:
 		for (unsigned int i = 0; i < NUM_LANDMARKS; i++) {
 			for (unsigned int j = 0; j < LANDMARK_DIM; j++) {
 				f >> landmarks(i, j);
+				//landmarks(i, j) = double(int(landmarks(i, j) * 256. / 600.));
 			}
 		}
 	}
@@ -193,6 +194,7 @@ public:
 	static bool writeMesh(const Mesh& mesh, const std::string& filename) {
 		std::string pathToFile = PATH_TO_MESH_DIR + filename + ".off";
 
+		
 		//number of valid vertices
 		unsigned int nVertices = 0;
 		nVertices = mesh.vertices.rows();
@@ -218,15 +220,15 @@ public:
 		for (unsigned i = 0; i < nVertices; ++i) {
 			outFile << mesh.vertices.row(i) << " ";
 			for (int j = 0; j < 3; ++j) {
-				if (mesh.colors(i, j) < 0)
-					outFile << "0";
-				if (mesh.colors(i, j) > 255)
-					outFile << "255";
+				if (mesh.colors(i, j) < 0.)
+					outFile << double(0);
+				else if (mesh.colors(i, j) > 1.)
+					outFile << double(1);
 				else
 					outFile << mesh.colors(i, j);
 				outFile << " ";
 			}
-			outFile << "255" << std::endl;
+			outFile << double(255) << std::endl;
 		}
 
 		//save valid faces
