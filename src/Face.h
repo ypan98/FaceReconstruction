@@ -6,9 +6,9 @@
 // Class for a reconstructed 3D face
 class Face {
 public:
-	Face(std::string _imageFileName = "sample1", std::string _faceModel = "BFM17") {
+	Face(std::string _imageFileName = "sample1", std::string _faceModel = "BFM17", double scaling_factor = 1./400) {
 		image = Image(_imageFileName);
-		faceModel = FaceModel(_faceModel);		
+		faceModel = FaceModel(_faceModel);
 		alpha = VectorXd::Zero(faceModel.getAlphaSize());
 		beta = VectorXd::Zero(faceModel.getBetaSize());
 		gamma = VectorXd::Zero(faceModel.getGammaSize());
@@ -101,8 +101,18 @@ public:
 	VectorXd getSHBlueCoefficients() {
 		return sh_blue_coefficients;
 	}
-	void setIntrinsics(Matrix4d _intrinsics) {
-		intrinsics = _intrinsics;
+	void setIntrinsics(double fov_, double aspect_ratio_, double z_near_, double z_far_) {
+		Matrix4d perspective_projection_matrix = Matrix4d::Zero();
+		perspective_projection_matrix(0, 0) = fov_ / aspect_ratio_;
+		perspective_projection_matrix(1, 1) = fov_;
+		perspective_projection_matrix(2, 2) = (z_near_ + z_far_) / (z_near_ - z_far_);
+		perspective_projection_matrix(2, 3) = (2 * z_near_ * z_far_) / (z_near_ - z_far_);
+		perspective_projection_matrix(3, 2) = -1;
+
+		fov = fov_;
+		z_near = z_near_;
+		z_far = z_far_;
+		intrinsics = perspective_projection_matrix;
 	}
 	Matrix4d getIntrinsics() {
 		return intrinsics;
@@ -161,6 +171,12 @@ public:
 	VectorXd getColor() const {
 		return color;
 	}
+	float get_z_near() const {
+		return z_near;
+	}
+	float get_z_far() const {
+		return z_far;
+	}
 private:
 	VectorXd alpha, beta, gamma, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients;	// parameters to optimize
 	VectorXd shape, color;
@@ -168,4 +184,5 @@ private:
 	Matrix4d extrinsics;	// given by optimization
 	Image image;	// the corresponding image
 	FaceModel faceModel;	// the used face model, ie BFM17
+	double fov, z_near, z_far;
 };

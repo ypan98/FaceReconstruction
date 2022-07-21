@@ -28,9 +28,7 @@ public:
 	}
 
 	cv::Mat get_depth_buffer() {
-		cv::Mat depth_to_visualize;
-		cv::normalize(depth_img, depth_to_visualize, 0, 255, cv::NORM_MINMAX, CV_8UC1);
-		return depth_to_visualize;
+		return depth_img;
 	}
 
 	cv::Mat get_pixel_bary_coord_buffer() {
@@ -49,18 +47,8 @@ public:
 		return re_rendered_vertex_color;
 	}
 
-	Matrix4d get_perspective_projection_matrix(double fov, double aspect_ratio, double z_near=0.1, double z_far=100000.) {
-		Matrix4d perspective_projection_matrix = Matrix4d::Zero();
-		perspective_projection_matrix(0, 0) = fov / aspect_ratio;
-		perspective_projection_matrix(1, 1) = fov;
-		perspective_projection_matrix(2, 2) = (z_near + z_far) / (z_near - z_far);
-		perspective_projection_matrix(2, 3) = (2 * z_near * z_far) / (z_near - z_far);
-		perspective_projection_matrix(3, 2) = -1;
-		return perspective_projection_matrix;
-	}
-
 	void render(Matrix4f& mvp_matrix, Matrix4f& mv_matrix, VectorXf& vertices, VectorXf& colors, VectorXf& sh_red_coefficients,
-		VectorXf& sh_green_coefficients, VectorXf& sh_blue_coefficients);
+		VectorXf& sh_green_coefficients, VectorXf& sh_blue_coefficients, float z_near, float z_far);
 
 private:
 	static Renderer s_instance;
@@ -68,7 +56,7 @@ private:
 	int viewport_height, viewport_width, num_vertices, num_triangles;
 	
 	// Cuda streams used to parallelize GPU IO operations
-	cudaStream_t streams[13];
+	cudaStream_t streams[14];
 	
 	// Device buffers used to store face parameters
 	float* device_vertices, * device_vertex_normals, * device_colors;
@@ -83,7 +71,7 @@ private:
 	unsigned char* device_rendered_color;
 	double* device_pixel_bary_coord;
 	int* device_pixel_triangle, * device_depth;
-	float* device_pixel_triangle_normals;
+	float* device_pixel_triangle_normals, * device_depth_to_visualize;
 
 	// Device buffer used to control sequential IO cuda operations
 	int* device_depth_locked;

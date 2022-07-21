@@ -6,6 +6,7 @@ class Image {
 public:
 	Image() {
 	}
+
 	// Constructor that loads all necessary information from the files via DataHandler. If _fileName is not specified, "sample1" is taken as default.
 	Image(std::string _fileName) {
 		fileName = _fileName;
@@ -13,8 +14,10 @@ public:
 		rgb = std::vector<MatrixXd>(3);
 		DataHandler::loadRGB(_fileName, rgb);
 		DataHandler::loadLandmarks(fileName, landmarks);
-		width = depthMap.rows();
-		height = depthMap.cols();
+		height = depthMap.rows();
+		width = depthMap.cols();
+		normalMap = cv::Mat(height, width, CV_64FC3);
+		computeNormals();
 	}
 
 	// getters
@@ -31,12 +34,34 @@ public:
 
 	Vector2d getLandmark(unsigned i) { return landmarks.row(i); }
 
+	cv::Mat getNormalMap() { return normalMap; }
+
 	std::vector<MatrixXd> getRGB() { return rgb; }
 
 private:
+	void computeNormals() {
+		int height = depthMap.rows();
+		int width = depthMap.cols();
+
+		for (int v = 1; v < height - 1; ++v) {
+			for (int u = 1; u < width - 1; ++u) {
+				Vector3d v_top = Vector3d(u, v - 1, double(depthMap(v - 1, u)) / 255.);
+				Vector3d v_down = Vector3d(u, v + 1, double(depthMap(v + 1, u)) / 255.);
+				Vector3d u_left = Vector3d(u - 1, v, double(depthMap(v, u - 1)) / 255.);
+				Vector3d u_right = Vector3d(u + 1, v, double(depthMap(v, u + 1)) / 255.);
+				Vector3d normal = -(u_right - u_left).cross(v_down - v_top);
+				normal.normalize();
+				normalMap.at<cv::Vec3d>(v, u)[0] = normal(0);
+				normalMap.at<cv::Vec3d>(v, u)[1] = normal(1);
+				normalMap.at<cv::Vec3d>(v, u)[2] = normal(2);
+			}
+		}
+	}
+
 	std::string fileName;	// name of the image file
 	unsigned int width, height;	// size of the image
-	MatrixXd depthMap;	// matrix of W x H. 255 for closest distance and 0 for farthest.
+	MatrixXd depthMap;	// matrix of HxW. 255 for closest distance and 0 for farthest.
 	std::vector<MatrixXd> rgb;	// [r, g, b] each of these is a matrix of W x H with values between [0, 255]
 	MatrixX2d landmarks;	// 68 2D facial landmarks detected by dl model
+	cv::Mat normalMap;
 };
