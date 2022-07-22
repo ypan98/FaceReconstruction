@@ -37,7 +37,7 @@ void performTask() {
 	{
 		// reconstruct face
 		auto render = Renderer::Get();
-		Face sourceFace = Face("sample2", "BFM17");
+		Face sourceFace = Face("sample1", "BFM17");
 		render.initialiaze_rendering_context(sourceFace.getFaceModel(), sourceFace.getImage().getHeight(), sourceFace.getImage().getWidth());
 		sourceFace.setIntrinsics(double(60), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
 			double(11000), double(12000));

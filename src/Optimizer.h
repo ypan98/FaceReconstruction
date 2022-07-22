@@ -124,7 +124,6 @@ public:
         Map<const Matrix<T, -1, 1> > alphaMap(alpha, BFM_ALPHA_SIZE);
         Map<const Matrix<T, -1, 1> > gammaMap(gamma, BFM_GAMMA_SIZE);
 
-        // Point to point constraint
         //     Calculate vertex
         Matrix<T, -1, -1> vertex_0 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_current_point(0), 3).cast<T>()
             + (*faceModel).getExpMeanBlock(3 * vertex_indices_current_point(0), 3).cast<T>()
@@ -183,239 +182,240 @@ public:
 
         vertex0_z = T(1) - ((T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex0_z * (T(z_far) - T(z_near)))) - T(z_near)) / (T(z_far) - T(z_near));
 
+        // Point to point constraint
         residuals[0] = (vertex0_z - depth_source) * T(pointWeight);
 
-        //Matrix<T, -1, -1> vertex_top_0 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_top(0), 3).cast<T>()
-        //    + (*faceModel).getExpMeanBlock(3 * vertex_indices_top(0), 3).cast<T>()
-        //    + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_top(0), 3) * alphaMap
-        //    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_top(0), 3) * gammaMap;
+        Matrix<T, -1, -1> vertex_top_0 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_top(0), 3).cast<T>()
+            + (*faceModel).getExpMeanBlock(3 * vertex_indices_top(0), 3).cast<T>()
+            + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_top(0), 3) * alphaMap
+            + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_top(0), 3) * gammaMap;
 
-        //Matrix<T, -1, -1> vertex_top_1 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_top(1), 3).cast<T>()
-        //    + (*faceModel).getExpMeanBlock(3 * vertex_indices_top(1), 3).cast<T>()
-        //    + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_top(1), 3) * alphaMap
-        //    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_top(1), 3) * gammaMap;
+        Matrix<T, -1, -1> vertex_top_1 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_top(1), 3).cast<T>()
+            + (*faceModel).getExpMeanBlock(3 * vertex_indices_top(1), 3).cast<T>()
+            + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_top(1), 3) * alphaMap
+            + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_top(1), 3) * gammaMap;
 
-        //Matrix<T, -1, -1> vertex_top_2 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_top(2), 3).cast<T>()
-        //    + (*faceModel).getExpMeanBlock(3 * vertex_indices_top(2), 3).cast<T>()
-        //    + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_top(2), 3) * alphaMap
-        //    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_top(2), 3) * gammaMap;
+        Matrix<T, -1, -1> vertex_top_2 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_top(2), 3).cast<T>()
+            + (*faceModel).getExpMeanBlock(3 * vertex_indices_top(2), 3).cast<T>()
+            + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_top(2), 3) * alphaMap
+            + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_top(2), 3) * gammaMap;
 
-        //Matrix<T, -1, -1> vertex_down_0 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_down(0), 3).cast<T>()
-        //    + (*faceModel).getExpMeanBlock(3 * vertex_indices_down(0), 3).cast<T>()
-        //    + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_down(0), 3) * alphaMap
-        //    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_down(0), 3) * gammaMap;
+        Matrix<T, -1, -1> vertex_down_0 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_down(0), 3).cast<T>()
+            + (*faceModel).getExpMeanBlock(3 * vertex_indices_down(0), 3).cast<T>()
+            + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_down(0), 3) * alphaMap
+            + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_down(0), 3) * gammaMap;
 
-        //Matrix<T, -1, -1> vertex_down_1 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_down(1), 3).cast<T>()
-        //    + (*faceModel).getExpMeanBlock(3 * vertex_indices_down(1), 3).cast<T>()
-        //    + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_down(1), 3) * alphaMap
-        //    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_down(1), 3) * gammaMap;
+        Matrix<T, -1, -1> vertex_down_1 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_down(1), 3).cast<T>()
+            + (*faceModel).getExpMeanBlock(3 * vertex_indices_down(1), 3).cast<T>()
+            + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_down(1), 3) * alphaMap
+            + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_down(1), 3) * gammaMap;
 
-        //Matrix<T, -1, -1> vertex_down_2 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_down(2), 3).cast<T>()
-        //    + (*faceModel).getExpMeanBlock(3 * vertex_indices_down(2), 3).cast<T>()
-        //    + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_down(2), 3) * alphaMap
-        //    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_down(2), 3) * gammaMap;
+        Matrix<T, -1, -1> vertex_down_2 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_down(2), 3).cast<T>()
+            + (*faceModel).getExpMeanBlock(3 * vertex_indices_down(2), 3).cast<T>()
+            + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_down(2), 3) * alphaMap
+            + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_down(2), 3) * gammaMap;
 
-        //Matrix<T, -1, -1> vertex_left_0 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_left(0), 3).cast<T>()
-        //    + (*faceModel).getExpMeanBlock(3 * vertex_indices_left(0), 3).cast<T>()
-        //    + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_left(0), 3) * alphaMap
-        //    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_left(0), 3) * gammaMap;
+        Matrix<T, -1, -1> vertex_left_0 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_left(0), 3).cast<T>()
+            + (*faceModel).getExpMeanBlock(3 * vertex_indices_left(0), 3).cast<T>()
+            + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_left(0), 3) * alphaMap
+            + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_left(0), 3) * gammaMap;
 
-        //Matrix<T, -1, -1> vertex_left_1 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_left(1), 3).cast<T>()
-        //    + (*faceModel).getExpMeanBlock(3 * vertex_indices_left(1), 3).cast<T>()
-        //    + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_left(1), 3) * alphaMap
-        //    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_left(1), 3) * gammaMap;
+        Matrix<T, -1, -1> vertex_left_1 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_left(1), 3).cast<T>()
+            + (*faceModel).getExpMeanBlock(3 * vertex_indices_left(1), 3).cast<T>()
+            + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_left(1), 3) * alphaMap
+            + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_left(1), 3) * gammaMap;
 
-        //Matrix<T, -1, -1> vertex_left_2 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_left(2), 3).cast<T>()
-        //    + (*faceModel).getExpMeanBlock(3 * vertex_indices_left(2), 3).cast<T>()
-        //    + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_left(2), 3) * alphaMap
-        //    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_left(2), 3) * gammaMap;
+        Matrix<T, -1, -1> vertex_left_2 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_left(2), 3).cast<T>()
+            + (*faceModel).getExpMeanBlock(3 * vertex_indices_left(2), 3).cast<T>()
+            + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_left(2), 3) * alphaMap
+            + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_left(2), 3) * gammaMap;
 
-        //Matrix<T, -1, -1> vertex_right_0 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_right(0), 3).cast<T>()
-        //    + (*faceModel).getExpMeanBlock(3 * vertex_indices_right(0), 3).cast<T>()
-        //    + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_right(0), 3) * alphaMap
-        //    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_right(0), 3) * gammaMap;
+        Matrix<T, -1, -1> vertex_right_0 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_right(0), 3).cast<T>()
+            + (*faceModel).getExpMeanBlock(3 * vertex_indices_right(0), 3).cast<T>()
+            + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_right(0), 3) * alphaMap
+            + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_right(0), 3) * gammaMap;
 
-        //Matrix<T, -1, -1> vertex_right_1 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_right(1), 3).cast<T>()
-        //    + (*faceModel).getExpMeanBlock(3 * vertex_indices_right(1), 3).cast<T>()
-        //    + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_right(1), 3) * alphaMap
-        //    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_right(1), 3) * gammaMap;
+        Matrix<T, -1, -1> vertex_right_1 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_right(1), 3).cast<T>()
+            + (*faceModel).getExpMeanBlock(3 * vertex_indices_right(1), 3).cast<T>()
+            + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_right(1), 3) * alphaMap
+            + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_right(1), 3) * gammaMap;
 
-        //Matrix<T, -1, -1> vertex_right_2 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_right(2), 3).cast<T>()
-        //    + (*faceModel).getExpMeanBlock(3 * vertex_indices_right(2), 3).cast<T>()
-        //    + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_right(2), 3) * alphaMap
-        //    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_right(2), 3) * gammaMap;
+        Matrix<T, -1, -1> vertex_right_2 = (*faceModel).getShapeMeanBlock(3 * vertex_indices_right(2), 3).cast<T>()
+            + (*faceModel).getExpMeanBlock(3 * vertex_indices_right(2), 3).cast<T>()
+            + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices_right(2), 3) * alphaMap
+            + (*faceModel).getExpBasisRowBlock(3 * vertex_indices_right(2), 3) * gammaMap;
 
-        //pose_inc.apply(vertex_top_0.data(), vertex_top_0.data());
-        //pose_inc.apply(vertex_top_1.data(), vertex_top_1.data());
-        //pose_inc.apply(vertex_top_2.data(), vertex_top_2.data());
+        pose_inc.apply(vertex_top_0.data(), vertex_top_0.data());
+        pose_inc.apply(vertex_top_1.data(), vertex_top_1.data());
+        pose_inc.apply(vertex_top_2.data(), vertex_top_2.data());
 
-        //pose_inc.apply(vertex_down_0.data(), vertex_down_0.data());
-        //pose_inc.apply(vertex_down_1.data(), vertex_down_1.data());
-        //pose_inc.apply(vertex_down_2.data(), vertex_down_2.data());
+        pose_inc.apply(vertex_down_0.data(), vertex_down_0.data());
+        pose_inc.apply(vertex_down_1.data(), vertex_down_1.data());
+        pose_inc.apply(vertex_down_2.data(), vertex_down_2.data());
 
-        //pose_inc.apply(vertex_left_0.data(), vertex_left_0.data());
-        //pose_inc.apply(vertex_left_1.data(), vertex_left_1.data());
-        //pose_inc.apply(vertex_left_2.data(), vertex_left_2.data());
+        pose_inc.apply(vertex_left_0.data(), vertex_left_0.data());
+        pose_inc.apply(vertex_left_1.data(), vertex_left_1.data());
+        pose_inc.apply(vertex_left_2.data(), vertex_left_2.data());
 
-        //pose_inc.apply(vertex_right_0.data(), vertex_right_0.data());
-        //pose_inc.apply(vertex_right_1.data(), vertex_right_1.data());
-        //pose_inc.apply(vertex_right_2.data(), vertex_right_2.data());
+        pose_inc.apply(vertex_right_0.data(), vertex_right_0.data());
+        pose_inc.apply(vertex_right_1.data(), vertex_right_1.data());
+        pose_inc.apply(vertex_right_2.data(), vertex_right_2.data());
 
-        //Matrix<T, 4, 1> vertex_top_0_screen;
-        //vertex_top_0_screen << vertex_top_0(0), vertex_top_0(1), vertex_top_0(2), T(1);
-        //Matrix<T, 4, 1> vertex_top_1_screen;
-        //vertex_top_1_screen << vertex_top_1(0), vertex_top_1(1), vertex_top_1(2), T(1);
-        //Matrix<T, 4, 1> vertex_top_2_screen;
-        //vertex_top_2_screen << vertex_top_2(0), vertex_top_2(1), vertex_top_2(2), T(1);
+        Matrix<T, 4, 1> vertex_top_0_screen;
+        vertex_top_0_screen << vertex_top_0(0), vertex_top_0(1), vertex_top_0(2), T(1);
+        Matrix<T, 4, 1> vertex_top_1_screen;
+        vertex_top_1_screen << vertex_top_1(0), vertex_top_1(1), vertex_top_1(2), T(1);
+        Matrix<T, 4, 1> vertex_top_2_screen;
+        vertex_top_2_screen << vertex_top_2(0), vertex_top_2(1), vertex_top_2(2), T(1);
 
-        //Matrix<T, 4, 1> vertex_down_0_screen;
-        //vertex_down_0_screen << vertex_down_0(0), vertex_down_0(1), vertex_down_0(2), T(1);
-        //Matrix<T, 4, 1> vertex_down_1_screen;
-        //vertex_down_1_screen << vertex_down_1(0), vertex_down_1(1), vertex_down_1(2), T(1);
-        //Matrix<T, 4, 1> vertex_down_2_screen;
-        //vertex_down_2_screen << vertex_down_2(0), vertex_down_2(1), vertex_down_2(2), T(1);
+        Matrix<T, 4, 1> vertex_down_0_screen;
+        vertex_down_0_screen << vertex_down_0(0), vertex_down_0(1), vertex_down_0(2), T(1);
+        Matrix<T, 4, 1> vertex_down_1_screen;
+        vertex_down_1_screen << vertex_down_1(0), vertex_down_1(1), vertex_down_1(2), T(1);
+        Matrix<T, 4, 1> vertex_down_2_screen;
+        vertex_down_2_screen << vertex_down_2(0), vertex_down_2(1), vertex_down_2(2), T(1);
 
-        //Matrix<T, 4, 1> vertex_left_0_screen;
-        //vertex_left_0_screen << vertex_left_0(0), vertex_left_0(1), vertex_left_0(2), T(1);
-        //Matrix<T, 4, 1> vertex_left_1_screen;
-        //vertex_left_1_screen << vertex_left_1(0), vertex_left_1(1), vertex_left_1(2), T(1);
-        //Matrix<T, 4, 1> vertex_left_2_screen;
-        //vertex_left_2_screen << vertex_left_2(0), vertex_left_2(1), vertex_left_2(2), T(1);
+        Matrix<T, 4, 1> vertex_left_0_screen;
+        vertex_left_0_screen << vertex_left_0(0), vertex_left_0(1), vertex_left_0(2), T(1);
+        Matrix<T, 4, 1> vertex_left_1_screen;
+        vertex_left_1_screen << vertex_left_1(0), vertex_left_1(1), vertex_left_1(2), T(1);
+        Matrix<T, 4, 1> vertex_left_2_screen;
+        vertex_left_2_screen << vertex_left_2(0), vertex_left_2(1), vertex_left_2(2), T(1);
 
-        //Matrix<T, 4, 1> vertex_right_0_screen;
-        //vertex_right_0_screen << vertex_right_0(0), vertex_right_0(1), vertex_right_0(2), T(1);
-        //Matrix<T, 4, 1> vertex_right_1_screen;
-        //vertex_right_1_screen << vertex_right_1(0), vertex_right_1(1), vertex_right_1(2), T(1);
-        //Matrix<T, 4, 1> vertex_right_2_screen;
-        //vertex_right_2_screen << vertex_right_2(0), vertex_right_2(1), vertex_right_2(2), T(1);
-        //
-        ////      apply perspective projection (instrinsics)
-        //vertex_top_0_screen = perspective_matrix * vertex_top_0_screen;
-        //vertex_top_1_screen = perspective_matrix * vertex_top_1_screen;
-        //vertex_top_2_screen = perspective_matrix * vertex_top_2_screen;
+        Matrix<T, 4, 1> vertex_right_0_screen;
+        vertex_right_0_screen << vertex_right_0(0), vertex_right_0(1), vertex_right_0(2), T(1);
+        Matrix<T, 4, 1> vertex_right_1_screen;
+        vertex_right_1_screen << vertex_right_1(0), vertex_right_1(1), vertex_right_1(2), T(1);
+        Matrix<T, 4, 1> vertex_right_2_screen;
+        vertex_right_2_screen << vertex_right_2(0), vertex_right_2(1), vertex_right_2(2), T(1);
+        
+        //      apply perspective projection (instrinsics)
+        vertex_top_0_screen = perspective_matrix * vertex_top_0_screen;
+        vertex_top_1_screen = perspective_matrix * vertex_top_1_screen;
+        vertex_top_2_screen = perspective_matrix * vertex_top_2_screen;
 
-        //vertex_down_0_screen = perspective_matrix * vertex_down_0_screen;
-        //vertex_down_1_screen = perspective_matrix * vertex_down_1_screen;
-        //vertex_down_2_screen = perspective_matrix * vertex_down_2_screen;
+        vertex_down_0_screen = perspective_matrix * vertex_down_0_screen;
+        vertex_down_1_screen = perspective_matrix * vertex_down_1_screen;
+        vertex_down_2_screen = perspective_matrix * vertex_down_2_screen;
 
-        //vertex_left_0_screen = perspective_matrix * vertex_left_0_screen;
-        //vertex_left_1_screen = perspective_matrix * vertex_left_1_screen;
-        //vertex_left_2_screen = perspective_matrix * vertex_left_2_screen;
+        vertex_left_0_screen = perspective_matrix * vertex_left_0_screen;
+        vertex_left_1_screen = perspective_matrix * vertex_left_1_screen;
+        vertex_left_2_screen = perspective_matrix * vertex_left_2_screen;
 
-        //vertex_right_0_screen = perspective_matrix * vertex_right_0_screen;
-        //vertex_right_1_screen = perspective_matrix * vertex_right_1_screen;
-        //vertex_right_2_screen = perspective_matrix * vertex_right_2_screen;
+        vertex_right_0_screen = perspective_matrix * vertex_right_0_screen;
+        vertex_right_1_screen = perspective_matrix * vertex_right_1_screen;
+        vertex_right_2_screen = perspective_matrix * vertex_right_2_screen;
 
-        //vertex_top_0_screen = vertex_top_0_screen / vertex_top_0_screen(3, 0);
-        //vertex_top_1_screen = vertex_top_1_screen / vertex_top_1_screen(3, 0);
-        //vertex_top_2_screen = vertex_top_2_screen / vertex_top_2_screen(3, 0);
+        vertex_top_0_screen = vertex_top_0_screen / vertex_top_0_screen(3, 0);
+        vertex_top_1_screen = vertex_top_1_screen / vertex_top_1_screen(3, 0);
+        vertex_top_2_screen = vertex_top_2_screen / vertex_top_2_screen(3, 0);
 
-        //vertex_down_0_screen = vertex_down_0_screen / vertex_down_0_screen(3, 0);
-        //vertex_down_1_screen = vertex_down_1_screen / vertex_down_1_screen(3, 0);
-        //vertex_down_2_screen = vertex_down_2_screen / vertex_down_2_screen(3, 0);
+        vertex_down_0_screen = vertex_down_0_screen / vertex_down_0_screen(3, 0);
+        vertex_down_1_screen = vertex_down_1_screen / vertex_down_1_screen(3, 0);
+        vertex_down_2_screen = vertex_down_2_screen / vertex_down_2_screen(3, 0);
 
-        //vertex_left_0_screen = vertex_left_0_screen / vertex_left_0_screen(3, 0);
-        //vertex_left_1_screen = vertex_left_1_screen / vertex_left_1_screen(3, 0);
-        //vertex_left_2_screen = vertex_left_2_screen / vertex_left_2_screen(3, 0);
+        vertex_left_0_screen = vertex_left_0_screen / vertex_left_0_screen(3, 0);
+        vertex_left_1_screen = vertex_left_1_screen / vertex_left_1_screen(3, 0);
+        vertex_left_2_screen = vertex_left_2_screen / vertex_left_2_screen(3, 0);
 
-        //vertex_right_0_screen = vertex_right_0_screen / vertex_right_0_screen(3, 0);
-        //vertex_right_1_screen = vertex_right_1_screen / vertex_right_1_screen(3, 0);
-        //vertex_right_2_screen = vertex_right_2_screen / vertex_right_2_screen(3, 0);
+        vertex_right_0_screen = vertex_right_0_screen / vertex_right_0_screen(3, 0);
+        vertex_right_1_screen = vertex_right_1_screen / vertex_right_1_screen(3, 0);
+        vertex_right_2_screen = vertex_right_2_screen / vertex_right_2_screen(3, 0);
 
-        ////      To pixel space
-        //vertex_top_0_screen(0, 0) = (vertex_top_0_screen(0, 0) + T(1)) * (T(width) / T(2));
-        //vertex_top_0_screen(1, 0) = T(height) - (vertex_top_0_screen(1, 0) + T(1)) * (T(height) / T(2));
-        //vertex_top_1_screen(0, 0) = (vertex_top_1_screen(0, 0) + T(1)) * (T(width) / T(2));
-        //vertex_top_1_screen(1, 0) = T(height) - (vertex_top_1_screen(1, 0) + T(1)) * (T(height) / T(2));
-        //vertex_top_2_screen(0, 0) = (vertex_top_2_screen(0, 0) + T(1)) * (T(width) / T(2));
-        //vertex_top_2_screen(1, 0) = T(height) - (vertex_top_2_screen(1, 0) + T(1)) * (T(height) / T(2));
+        //      To pixel space
+        vertex_top_0_screen(0, 0) = (vertex_top_0_screen(0, 0) + T(1)) * (T(width) / T(2));
+        vertex_top_0_screen(1, 0) = T(height) - (vertex_top_0_screen(1, 0) + T(1)) * (T(height) / T(2));
+        vertex_top_1_screen(0, 0) = (vertex_top_1_screen(0, 0) + T(1)) * (T(width) / T(2));
+        vertex_top_1_screen(1, 0) = T(height) - (vertex_top_1_screen(1, 0) + T(1)) * (T(height) / T(2));
+        vertex_top_2_screen(0, 0) = (vertex_top_2_screen(0, 0) + T(1)) * (T(width) / T(2));
+        vertex_top_2_screen(1, 0) = T(height) - (vertex_top_2_screen(1, 0) + T(1)) * (T(height) / T(2));
 
-        //vertex_down_0_screen(0, 0) = (vertex_down_0_screen(0, 0) + T(1)) * (T(width) / T(2));
-        //vertex_down_0_screen(1, 0) = T(height) - (vertex_down_0_screen(1, 0) + T(1)) * (T(height) / T(2));
-        //vertex_down_1_screen(0, 0) = (vertex_down_1_screen(0, 0) + T(1)) * (T(width) / T(2));
-        //vertex_down_1_screen(1, 0) = T(height) - (vertex_down_1_screen(1, 0) + T(1)) * (T(height) / T(2));
-        //vertex_down_2_screen(0, 0) = (vertex_down_2_screen(0, 0) + T(1)) * (T(width) / T(2));
-        //vertex_down_2_screen(1, 0) = T(height) - (vertex_down_2_screen(1, 0) + T(1)) * (T(height) / T(2));
+        vertex_down_0_screen(0, 0) = (vertex_down_0_screen(0, 0) + T(1)) * (T(width) / T(2));
+        vertex_down_0_screen(1, 0) = T(height) - (vertex_down_0_screen(1, 0) + T(1)) * (T(height) / T(2));
+        vertex_down_1_screen(0, 0) = (vertex_down_1_screen(0, 0) + T(1)) * (T(width) / T(2));
+        vertex_down_1_screen(1, 0) = T(height) - (vertex_down_1_screen(1, 0) + T(1)) * (T(height) / T(2));
+        vertex_down_2_screen(0, 0) = (vertex_down_2_screen(0, 0) + T(1)) * (T(width) / T(2));
+        vertex_down_2_screen(1, 0) = T(height) - (vertex_down_2_screen(1, 0) + T(1)) * (T(height) / T(2));
 
-        //vertex_left_0_screen(0, 0) = (vertex_left_0_screen(0, 0) + T(1)) * (T(width) / T(2));
-        //vertex_left_0_screen(1, 0) = T(height) - (vertex_left_0_screen(1, 0) + T(1)) * (T(height) / T(2));
-        //vertex_left_1_screen(0, 0) = (vertex_left_1_screen(0, 0) + T(1)) * (T(width) / T(2));
-        //vertex_left_1_screen(1, 0) = T(height) - (vertex_left_1_screen(1, 0) + T(1)) * (T(height) / T(2));
-        //vertex_left_2_screen(0, 0) = (vertex_left_2_screen(0, 0) + T(1)) * (T(width) / T(2));
-        //vertex_left_2_screen(1, 0) = T(height) - (vertex_left_2_screen(1, 0) + T(1)) * (T(height) / T(2));
+        vertex_left_0_screen(0, 0) = (vertex_left_0_screen(0, 0) + T(1)) * (T(width) / T(2));
+        vertex_left_0_screen(1, 0) = T(height) - (vertex_left_0_screen(1, 0) + T(1)) * (T(height) / T(2));
+        vertex_left_1_screen(0, 0) = (vertex_left_1_screen(0, 0) + T(1)) * (T(width) / T(2));
+        vertex_left_1_screen(1, 0) = T(height) - (vertex_left_1_screen(1, 0) + T(1)) * (T(height) / T(2));
+        vertex_left_2_screen(0, 0) = (vertex_left_2_screen(0, 0) + T(1)) * (T(width) / T(2));
+        vertex_left_2_screen(1, 0) = T(height) - (vertex_left_2_screen(1, 0) + T(1)) * (T(height) / T(2));
 
-        //vertex_right_0_screen(0, 0) = (vertex_right_0_screen(0, 0) + T(1)) * (T(width) / T(2));
-        //vertex_right_0_screen(1, 0) = T(height) - (vertex_right_0_screen(1, 0) + T(1)) * (T(height) / T(2));
-        //vertex_right_1_screen(0, 0) = (vertex_right_1_screen(0, 0) + T(1)) * (T(width) / T(2));
-        //vertex_right_1_screen(1, 0) = T(height) - (vertex_right_1_screen(1, 0) + T(1)) * (T(height) / T(2));
-        //vertex_right_2_screen(0, 0) = (vertex_right_2_screen(0, 0) + T(1)) * (T(width) / T(2));
-        //vertex_right_2_screen(1, 0) = T(height) - (vertex_right_2_screen(1, 0) + T(1)) * (T(height) / T(2));
+        vertex_right_0_screen(0, 0) = (vertex_right_0_screen(0, 0) + T(1)) * (T(width) / T(2));
+        vertex_right_0_screen(1, 0) = T(height) - (vertex_right_0_screen(1, 0) + T(1)) * (T(height) / T(2));
+        vertex_right_1_screen(0, 0) = (vertex_right_1_screen(0, 0) + T(1)) * (T(width) / T(2));
+        vertex_right_1_screen(1, 0) = T(height) - (vertex_right_1_screen(1, 0) + T(1)) * (T(height) / T(2));
+        vertex_right_2_screen(0, 0) = (vertex_right_2_screen(0, 0) + T(1)) * (T(width) / T(2));
+        vertex_right_2_screen(1, 0) = T(height) - (vertex_right_2_screen(1, 0) + T(1)) * (T(height) / T(2));
 
-        //T one_over_v0ToLine12_top = T(1) / implicit_line(vertex_top_0_screen(0, 0), vertex_top_0_screen(1, 0), vertex_top_1_screen, vertex_top_2_screen);
-        //T one_over_v1ToLine20_top = T(1) / implicit_line(vertex_top_1_screen(0, 0), vertex_top_1_screen(1, 0), vertex_top_2_screen, vertex_top_0_screen);
-        //T one_over_v2ToLine01_top = T(1) / implicit_line(vertex_top_2_screen(0, 0), vertex_top_2_screen(1, 0), vertex_top_0_screen, vertex_top_1_screen);
+        T one_over_v0ToLine12_top = T(1) / implicit_line(vertex_top_0_screen(0, 0), vertex_top_0_screen(1, 0), vertex_top_1_screen, vertex_top_2_screen);
+        T one_over_v1ToLine20_top = T(1) / implicit_line(vertex_top_1_screen(0, 0), vertex_top_1_screen(1, 0), vertex_top_2_screen, vertex_top_0_screen);
+        T one_over_v2ToLine01_top = T(1) / implicit_line(vertex_top_2_screen(0, 0), vertex_top_2_screen(1, 0), vertex_top_0_screen, vertex_top_1_screen);
 
-        //T one_over_v0ToLine12_down = T(1) / implicit_line(vertex_down_0_screen(0, 0), vertex_down_0_screen(1, 0), vertex_down_1_screen, vertex_down_2_screen);
-        //T one_over_v1ToLine20_down = T(1) / implicit_line(vertex_down_1_screen(0, 0), vertex_down_1_screen(1, 0), vertex_down_2_screen, vertex_down_0_screen);
-        //T one_over_v2ToLine01_down = T(1) / implicit_line(vertex_down_2_screen(0, 0), vertex_down_2_screen(1, 0), vertex_down_0_screen, vertex_down_1_screen);
+        T one_over_v0ToLine12_down = T(1) / implicit_line(vertex_down_0_screen(0, 0), vertex_down_0_screen(1, 0), vertex_down_1_screen, vertex_down_2_screen);
+        T one_over_v1ToLine20_down = T(1) / implicit_line(vertex_down_1_screen(0, 0), vertex_down_1_screen(1, 0), vertex_down_2_screen, vertex_down_0_screen);
+        T one_over_v2ToLine01_down = T(1) / implicit_line(vertex_down_2_screen(0, 0), vertex_down_2_screen(1, 0), vertex_down_0_screen, vertex_down_1_screen);
 
-        //T one_over_v0ToLine12_left = T(1) / implicit_line(vertex_left_0_screen(0, 0), vertex_left_0_screen(1, 0), vertex_left_1_screen, vertex_left_2_screen);
-        //T one_over_v1ToLine20_left = T(1) / implicit_line(vertex_left_1_screen(0, 0), vertex_left_1_screen(1, 0), vertex_left_2_screen, vertex_left_0_screen);
-        //T one_over_v2ToLine01_left = T(1) / implicit_line(vertex_left_2_screen(0, 0), vertex_left_2_screen(1, 0), vertex_left_0_screen, vertex_left_1_screen);
+        T one_over_v0ToLine12_left = T(1) / implicit_line(vertex_left_0_screen(0, 0), vertex_left_0_screen(1, 0), vertex_left_1_screen, vertex_left_2_screen);
+        T one_over_v1ToLine20_left = T(1) / implicit_line(vertex_left_1_screen(0, 0), vertex_left_1_screen(1, 0), vertex_left_2_screen, vertex_left_0_screen);
+        T one_over_v2ToLine01_left = T(1) / implicit_line(vertex_left_2_screen(0, 0), vertex_left_2_screen(1, 0), vertex_left_0_screen, vertex_left_1_screen);
 
-        //T one_over_v0ToLine12_right = T(1) / implicit_line(vertex_right_0_screen(0, 0), vertex_right_0_screen(1, 0), vertex_right_1_screen, vertex_right_2_screen);
-        //T one_over_v1ToLine20_right = T(1) / implicit_line(vertex_right_1_screen(0, 0), vertex_right_1_screen(1, 0), vertex_right_2_screen, vertex_right_0_screen);
-        //T one_over_v2ToLine01_right = T(1) / implicit_line(vertex_right_2_screen(0, 0), vertex_right_2_screen(1, 0), vertex_right_0_screen, vertex_right_1_screen);
+        T one_over_v0ToLine12_right = T(1) / implicit_line(vertex_right_0_screen(0, 0), vertex_right_0_screen(1, 0), vertex_right_1_screen, vertex_right_2_screen);
+        T one_over_v1ToLine20_right = T(1) / implicit_line(vertex_right_1_screen(0, 0), vertex_right_1_screen(1, 0), vertex_right_2_screen, vertex_right_0_screen);
+        T one_over_v2ToLine01_right = T(1) / implicit_line(vertex_right_2_screen(0, 0), vertex_right_2_screen(1, 0), vertex_right_0_screen, vertex_right_1_screen);
 
-        //T alpha_bary_top = implicit_line(T(pixel_col), T(pixel_row - 1), vertex_top_1_screen, vertex_top_2_screen) * one_over_v0ToLine12_top;
-        //T beta_bary_top = implicit_line(T(pixel_col), T(pixel_row - 1), vertex_top_2_screen, vertex_top_0_screen) * one_over_v1ToLine20_top;
-        //T gamma_bary_top = implicit_line(T(pixel_col), T(pixel_row - 1), vertex_top_0_screen, vertex_top_1_screen) * one_over_v2ToLine01_top;
+        T alpha_bary_top = implicit_line(T(pixel_col), T(pixel_row - 1), vertex_top_1_screen, vertex_top_2_screen) * one_over_v0ToLine12_top;
+        T beta_bary_top = implicit_line(T(pixel_col), T(pixel_row - 1), vertex_top_2_screen, vertex_top_0_screen) * one_over_v1ToLine20_top;
+        T gamma_bary_top = implicit_line(T(pixel_col), T(pixel_row - 1), vertex_top_0_screen, vertex_top_1_screen) * one_over_v2ToLine01_top;
 
-        //T alpha_bary_down = implicit_line(T(pixel_col), T(pixel_row + 1), vertex_down_1_screen, vertex_down_2_screen) * one_over_v0ToLine12_down;
-        //T beta_bary_down = implicit_line(T(pixel_col), T(pixel_row + 1), vertex_down_2_screen, vertex_down_0_screen) * one_over_v1ToLine20_down;
-        //T gamma_bary_down = implicit_line(T(pixel_col), T(pixel_row + 1), vertex_down_0_screen, vertex_down_1_screen) * one_over_v2ToLine01_down;
+        T alpha_bary_down = implicit_line(T(pixel_col), T(pixel_row + 1), vertex_down_1_screen, vertex_down_2_screen) * one_over_v0ToLine12_down;
+        T beta_bary_down = implicit_line(T(pixel_col), T(pixel_row + 1), vertex_down_2_screen, vertex_down_0_screen) * one_over_v1ToLine20_down;
+        T gamma_bary_down = implicit_line(T(pixel_col), T(pixel_row + 1), vertex_down_0_screen, vertex_down_1_screen) * one_over_v2ToLine01_down;
 
-        //T alpha_bary_left = implicit_line(T(pixel_col - 1), T(pixel_row), vertex_left_1_screen, vertex_left_2_screen) * one_over_v0ToLine12_left;
-        //T beta_bary_left = implicit_line(T(pixel_col - 1), T(pixel_row), vertex_left_2_screen, vertex_left_0_screen) * one_over_v1ToLine20_left;
-        //T gamma_bary_left = implicit_line(T(pixel_col - 1), T(pixel_row), vertex_left_0_screen, vertex_left_1_screen) * one_over_v2ToLine01_left;
+        T alpha_bary_left = implicit_line(T(pixel_col - 1), T(pixel_row), vertex_left_1_screen, vertex_left_2_screen) * one_over_v0ToLine12_left;
+        T beta_bary_left = implicit_line(T(pixel_col - 1), T(pixel_row), vertex_left_2_screen, vertex_left_0_screen) * one_over_v1ToLine20_left;
+        T gamma_bary_left = implicit_line(T(pixel_col - 1), T(pixel_row), vertex_left_0_screen, vertex_left_1_screen) * one_over_v2ToLine01_left;
 
-        //T alpha_bary_right = implicit_line(T(pixel_col + 1), T(pixel_row), vertex_right_1_screen, vertex_right_2_screen) * one_over_v0ToLine12_right;
-        //T beta_bary_right = implicit_line(T(pixel_col + 1), T(pixel_row), vertex_right_2_screen, vertex_right_0_screen) * one_over_v1ToLine20_right;
-        //T gamma_bary_right = implicit_line(T(pixel_col + 1), T(pixel_row), vertex_right_0_screen, vertex_right_1_screen) * one_over_v2ToLine01_right;
+        T alpha_bary_right = implicit_line(T(pixel_col + 1), T(pixel_row), vertex_right_1_screen, vertex_right_2_screen) * one_over_v0ToLine12_right;
+        T beta_bary_right = implicit_line(T(pixel_col + 1), T(pixel_row), vertex_right_2_screen, vertex_right_0_screen) * one_over_v1ToLine20_right;
+        T gamma_bary_right = implicit_line(T(pixel_col + 1), T(pixel_row), vertex_right_0_screen, vertex_right_1_screen) * one_over_v2ToLine01_right;
 
-        //T vertex_x_top = alpha_bary_top * vertex_top_0_screen(0, 0) + beta_bary_top * vertex_top_1_screen(0, 0) + gamma_bary_top * vertex_top_2_screen(0, 0);
-        //T vertex_y_top = alpha_bary_top * vertex_top_0_screen(1, 0) + beta_bary_top * vertex_top_1_screen(1, 0) + gamma_bary_top * vertex_top_2_screen(1, 0);
-        //T vertex_z_top = alpha_bary_top * vertex_top_0_screen(2, 0) + beta_bary_top * vertex_top_1_screen(2, 0) + gamma_bary_top * vertex_top_2_screen(2, 0);
+        T vertex_x_top = alpha_bary_top * vertex_top_0_screen(0, 0) + beta_bary_top * vertex_top_1_screen(0, 0) + gamma_bary_top * vertex_top_2_screen(0, 0);
+        T vertex_y_top = alpha_bary_top * vertex_top_0_screen(1, 0) + beta_bary_top * vertex_top_1_screen(1, 0) + gamma_bary_top * vertex_top_2_screen(1, 0);
+        T vertex_z_top = alpha_bary_top * vertex_top_0_screen(2, 0) + beta_bary_top * vertex_top_1_screen(2, 0) + gamma_bary_top * vertex_top_2_screen(2, 0);
 
-        //T vertex_x_down = alpha_bary_down * vertex_down_0_screen(0, 0) + beta_bary_down * vertex_down_1_screen(0, 0) + gamma_bary_down * vertex_down_2_screen(0, 0);
-        //T vertex_y_down = alpha_bary_down * vertex_down_0_screen(1, 0) + beta_bary_down * vertex_down_1_screen(1, 0) + gamma_bary_down * vertex_down_2_screen(1, 0);
-        //T vertex_z_down = alpha_bary_down * vertex_down_0_screen(2, 0) + beta_bary_down * vertex_down_1_screen(2, 0) + gamma_bary_down * vertex_down_2_screen(2, 0);
+        T vertex_x_down = alpha_bary_down * vertex_down_0_screen(0, 0) + beta_bary_down * vertex_down_1_screen(0, 0) + gamma_bary_down * vertex_down_2_screen(0, 0);
+        T vertex_y_down = alpha_bary_down * vertex_down_0_screen(1, 0) + beta_bary_down * vertex_down_1_screen(1, 0) + gamma_bary_down * vertex_down_2_screen(1, 0);
+        T vertex_z_down = alpha_bary_down * vertex_down_0_screen(2, 0) + beta_bary_down * vertex_down_1_screen(2, 0) + gamma_bary_down * vertex_down_2_screen(2, 0);
 
-        //T vertex_x_left = alpha_bary_left * vertex_left_0_screen(0, 0) + beta_bary_left * vertex_left_1_screen(0, 0) + gamma_bary_left * vertex_left_2_screen(0, 0);
-        //T vertex_y_left = alpha_bary_left * vertex_left_0_screen(1, 0) + beta_bary_left * vertex_left_1_screen(1, 0) + gamma_bary_left * vertex_left_2_screen(1, 0);
-        //T vertex_z_left = alpha_bary_left * vertex_left_0_screen(2, 0) + beta_bary_left * vertex_left_1_screen(2, 0) + gamma_bary_left * vertex_left_2_screen(2, 0);
+        T vertex_x_left = alpha_bary_left * vertex_left_0_screen(0, 0) + beta_bary_left * vertex_left_1_screen(0, 0) + gamma_bary_left * vertex_left_2_screen(0, 0);
+        T vertex_y_left = alpha_bary_left * vertex_left_0_screen(1, 0) + beta_bary_left * vertex_left_1_screen(1, 0) + gamma_bary_left * vertex_left_2_screen(1, 0);
+        T vertex_z_left = alpha_bary_left * vertex_left_0_screen(2, 0) + beta_bary_left * vertex_left_1_screen(2, 0) + gamma_bary_left * vertex_left_2_screen(2, 0);
 
-        //T vertex_x_right = alpha_bary_right * vertex_right_0_screen(0, 0) + beta_bary_right * vertex_right_1_screen(0, 0) + gamma_bary_right * vertex_right_2_screen(0, 0);
-        //T vertex_y_right = alpha_bary_right * vertex_right_0_screen(1, 0) + beta_bary_right * vertex_right_1_screen(1, 0) + gamma_bary_right * vertex_right_2_screen(1, 0);
-        //T vertex_z_right = alpha_bary_right * vertex_right_0_screen(2, 0) + beta_bary_right * vertex_right_1_screen(2, 0) + gamma_bary_right * vertex_right_2_screen(2, 0);
+        T vertex_x_right = alpha_bary_right * vertex_right_0_screen(0, 0) + beta_bary_right * vertex_right_1_screen(0, 0) + gamma_bary_right * vertex_right_2_screen(0, 0);
+        T vertex_y_right = alpha_bary_right * vertex_right_0_screen(1, 0) + beta_bary_right * vertex_right_1_screen(1, 0) + gamma_bary_right * vertex_right_2_screen(1, 0);
+        T vertex_z_right = alpha_bary_right * vertex_right_0_screen(2, 0) + beta_bary_right * vertex_right_1_screen(2, 0) + gamma_bary_right * vertex_right_2_screen(2, 0);
 
-        //vertex_z_top = T(1) - ((T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_z_top * (T(z_far) - T(z_near)))) - T(z_near)) / (T(z_far) - T(z_near));
-        //vertex_z_down = T(1) - ((T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_z_down * (T(z_far) - T(z_near)))) - T(z_near)) / (T(z_far) - T(z_near));
-        //vertex_z_left = T(1) - ((T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_z_left * (T(z_far) - T(z_near)))) - T(z_near)) / (T(z_far) - T(z_near));
-        //vertex_z_right = T(1) - ((T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_z_right * (T(z_far) - T(z_near)))) - T(z_near)) / (T(z_far) - T(z_near));
+        vertex_z_top = T(1) - ((T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_z_top * (T(z_far) - T(z_near)))) - T(z_near)) / (T(z_far) - T(z_near));
+        vertex_z_down = T(1) - ((T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_z_down * (T(z_far) - T(z_near)))) - T(z_near)) / (T(z_far) - T(z_near));
+        vertex_z_left = T(1) - ((T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_z_left * (T(z_far) - T(z_near)))) - T(z_near)) / (T(z_far) - T(z_near));
+        vertex_z_right = T(1) - ((T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_z_right * (T(z_far) - T(z_near)))) - T(z_near)) / (T(z_far) - T(z_near));
 
-        //Vector<T, 3> dzdx;
-        //dzdx << vertex_x_right - vertex_x_left, vertex_y_right - vertex_y_left, vertex_z_right - vertex_z_left;
-        //Vector<T, 3> dzdy;
-        //dzdy << vertex_x_down - vertex_x_top, vertex_y_down - vertex_y_top, vertex_z_down - vertex_z_top;
-        //Vector<T, 3> point_normal_estimated = -(dzdx).cross(dzdy);
-        //point_normal_estimated.normalize();
+        Vector<T, 3> dzdx;
+        dzdx << vertex_x_right - vertex_x_left, vertex_y_right - vertex_y_left, vertex_z_right - vertex_z_left;
+        Vector<T, 3> dzdy;
+        dzdy << vertex_x_down - vertex_x_top, vertex_y_down - vertex_y_top, vertex_z_down - vertex_z_top;
+        Vector<T, 3> point_normal_estimated = -(dzdx).cross(dzdy);
+        point_normal_estimated.normalize();
 
-        ////      Point to plane distance from model to input
-        //residuals[1] = T(planeWeight) * ((vertex0_z - T(depth_source)) * T(point_normal_source(2)));
+        //      Point to plane distance from model to input
+        residuals[1] = T(planeWeight) * ((vertex0_z - T(depth_source)) * T(point_normal_source(2)));
 
-        ////     Point to plane distance from input to model
-        //residuals[2] = T(planeWeight) * ((T(depth_source) - vertex0_z) * point_normal_estimated(2));
+         //    Point to plane distance from input to model
+        residuals[2] = T(planeWeight) * ((T(depth_source) - vertex0_z) * point_normal_estimated(2));
         return true;
     }
 private:
@@ -795,7 +795,7 @@ class Optimizer {
 
 public:
     // maybe add some options later when we are done with the basic version. Like GN/LM, Cuda/Cpu....
-    Optimizer(double _landmakrWeight = 0.125, double _pointWeight = 0.141, double _planeWeight = 0.316, double _colorWeight = 4.47, double _shapeRegWeight = 0.05, double _expRegWeight = 0.05, double _coloRegWeight = 0.05, int _maxIteration = 10) {
+    Optimizer(double _landmakrWeight = 0.125, double _pointWeight = 0.141, double _planeWeight = 0.316, double _colorWeight = 4.47, double _shapeRegWeight = 0.05, double _expRegWeight = 0.05, double _coloRegWeight = 0.05, int _maxIteration = 20) {
         landmarkWeight = _landmakrWeight;
         pointWeight = _pointWeight;
         planeWeight = _planeWeight;
@@ -857,14 +857,13 @@ private:
             add_regularization_terms(problem, alpha, beta, gamma);
             int intern_iteration = 20;
             if (i > 0) {
-                cout << poseIncrement.convertToMatrix(poseIncrement) << endl;
                 add_geometry_and_color_terms(problem, render, face, img, faceModel, source_depth, source_color, alpha, gamma, beta, poseIncrement, sh_red_coefficients,
                     sh_green_coefficients, sh_blue_coefficients, point_normal);
                 intern_iteration = 1;
             }
 
             // Solve problem
-            solve(problem, intern_iteration, ceres::ITERATIVE_SCHUR);
+            solve(problem, intern_iteration, ceres::SPARSE_NORMAL_CHOLESKY);
             
             // UPDATE PARAMS
             face.setAlpha(alpha);
@@ -967,7 +966,7 @@ private:
 
                             // Add geometry term
                             problem.AddResidualBlock(
-                                new ceres::AutoDiffCostFunction<GeometryConsistencyEnergy, 1, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6>
+                                new ceres::AutoDiffCostFunction<GeometryConsistencyEnergy, 3, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6>
                                 (new GeometryConsistencyEnergy(pointWeight, planeWeight, indices, indices_top, indices_down, indices_left, indices_right,
                                     source_depth(i, j) / 255., point_normal_source, &faceModel, projection_matrix, double(j) + 0.5, double(i) + 0.5,
                                     double(img.getWidth()), double(img.getHeight()), face.get_z_near(), face.get_z_far())),
@@ -1030,8 +1029,8 @@ private:
         cv::Mat depth_buffer = render.get_depth_buffer();
         for (unsigned i = 0; i < img.getHeight(); ++i) {
             for (unsigned j = 0; j < img.getWidth(); ++j) {
-                unsigned char depth = depth_buffer.at<unsigned char>(i, j);
-                if (!(depth == 255)) {
+                float depth = depth_buffer.at<float>(i, j);
+                if (!(depth == 0)) {
                     // Add texture color term
                     Vector3i indices = faceModel.getTriangulationByRow(indices_buffer.at<int>(i, j));
 
