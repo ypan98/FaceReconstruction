@@ -12,7 +12,7 @@ set(LIBRARY_DIR "${PROJECT_DIR}/libs")
 if(WIN32)
     set(Eigen3_DIR "${LIBRARY_DIR}/eigen/share/eigen3/cmake")
     set(glog_DIR "${LIBRARY_DIR}/glog/lib/cmake/glog")
-    set(Ceres_DIR "${LIBRARY_DIR}/ceres/Cmake")
+    set(Ceres_DIR "${LIBRARY_DIR}/ceres/lib/cmake/Ceres")
     set(OpenCV_DIR "${LIBRARY_DIR}/opencv")
     set(HDF5_DIR "${LIBRARY_DIR}/hdf5/cmake")
 

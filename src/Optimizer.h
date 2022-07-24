@@ -603,9 +603,9 @@ private:
         cv::Mat pixel_triangle_normal_buffer = render.get_pixel_triangle_normal_buffer();
         cv::Mat rendered_depth_buffer = render.get_depth_buffer();
 
-        cv::imshow("depth", rendered_depth_buffer);
-        cv::imshow("color", color_buffer);
-        cv::waitKey(0);
+        //cv::imshow("depth", rendered_depth_buffer);
+        //cv::imshow("color", color_buffer);
+        //cv::waitKey(0);
 
         for (unsigned i = 0; i < img.getHeight(); ++i) {
             for (unsigned j = 0; j < img.getWidth(); ++j) {
@@ -763,7 +763,7 @@ private:
     // --------------------------------------------------General functions--------------------------------------------------//
     void solve(ceres::Problem& problem, int max_iterations, ceres::LinearSolverType solver_type) {
         ceres::Solver::Options options;
-        //options.dense_linear_algebra_library_type = ceres::CUDA;
+        options.dense_linear_algebra_library_type = ceres::CUDA;
         options.num_threads = omp_get_max_threads();
         options.max_num_iterations = max_iterations;
         options.linear_solver_type = solver_type;
