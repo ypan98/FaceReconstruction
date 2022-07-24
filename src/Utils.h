@@ -33,24 +33,24 @@ struct Mesh
 };
 
 // replaces the given path with / -> \\ for Windows and viceversa for Unix
-std::string convert_path(std::string path) {
+static std::string convert_path(std::string path) {
 	if (!OS_WINDOWS) std::replace(path.begin(), path.end(), '\\', '/');
 	else std::replace(path.begin(), path.end(), '/', '\\');
 	return path;
 }
 
 // returns the full path to the project root directory
-std::string get_full_path_to_project_root_dir() {
+static std::string get_full_path_to_project_root_dir() {
 	return { fs::current_path().parent_path().parent_path().u8string() };
 }
 
 // tells if the current operating system is windows
-bool isWindows() {
+static bool isWindows() {
 	return OS_WINDOWS == 1;
 }
 
 // get shape of the h5 dataset, we assume it has at most dim=2
-std::vector<unsigned int> get_h5_dataset_shape(hid_t h5d) {
+static std::vector<unsigned int> get_h5_dataset_shape(hid_t h5d) {
 	std::vector<unsigned int> shape(2, 0);
 	hid_t dspace_id = H5Dget_space(h5d);
 	hsize_t dims[2];

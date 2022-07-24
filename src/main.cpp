@@ -3,14 +3,17 @@
 #include "Face.h"
 #include "Renderer.h"
 #include <chrono>
+#include <omp.h>
 
 using namespace std;
 
-vector<string> taskOptions{ "Face reconstruction", "Expression transfer", "Rasterize random face" };
+vector<string> taskOptions{ "Face reconstruction", "Expression transfer"};
 int taskOption = -1;
 // For now we only hadle sample images case
 // vector<string> inputOptions{ "Use sample image(s)" };
 // int inputOption = -1;
+
+Renderer Renderer::s_instance;
 
 void handleMenu() {
 	cout << "Please select a task:\n";
@@ -28,13 +31,33 @@ void handleMenu() {
 }
 
 void performTask() {
-	Optimizer optimizer(1, 1.0/3, 1.0/3, 1.0/3);
+	Optimizer optimizer;
 	switch (taskOption) {
 	case 1:
 	{
 		// reconstruct face
+		auto render = Renderer::Get();
 		Face sourceFace = Face("sample1", "BFM17");
-		optimizer.optimize(sourceFace);
+		render.initialiaze_rendering_context(sourceFace.getFaceModel(), sourceFace.getImage().getHeight(), sourceFace.getImage().getWidth());
+		sourceFace.setIntrinsics(double(60), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
+			double(8800), double(9000));
+		optimizer.optimize(sourceFace, 0);
+		Matrix4f mvp_matrix = sourceFace.getFullProjectionMatrix().transpose().cast<float>();
+		Matrix4f mv_matrix = sourceFace.getExtrinsics().transpose().cast<float>();
+		VectorXf vertices = sourceFace.getShape().cast<float>();
+		VectorXf colors = sourceFace.getColor().cast<float>();
+		VectorXf sh_red_coefficients = sourceFace.getSHRedCoefficients().cast<float>();
+		VectorXf sh_green_coefficients = sourceFace.getSHGreenCoefficients().cast<float>();
+		VectorXf sh_blue_coefficients = sourceFace.getSHBlueCoefficients().cast<float>();
+		render.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients, sourceFace.get_z_near(),
+			sourceFace.get_z_far());
+		sourceFace.setColor(render.get_re_rendered_vertex_color().cast<double>());
+		imshow("face", render.get_color_buffer());
+		cv::waitKey(0);
+		cout << sourceFace.getSHRedCoefficients() << endl;
+		cout << sourceFace.getSHGreenCoefficients() << endl;
+		cout << sourceFace.getSHBlueCoefficients() << endl;
+
 		// write out mesh
 		sourceFace.writeReconstructedFace();
 		break;
@@ -43,49 +66,21 @@ void performTask() {
 	{
 		// reconstruct source face
 		Face sourceFace = Face("sample1", "BFM17");
-		optimizer.optimize(sourceFace);
+		optimizer.optimize(sourceFace, 0);
 		// reconstruct target face
 		Face targetFace = Face("sample2", "BFM17");
-		optimizer.optimize(targetFace);
+		optimizer.optimize(targetFace, 0);
 		// transfer expression and write out mesh
 		targetFace.transferExpression(sourceFace);
 		targetFace.writeReconstructedFace();
 		break;
 	}
-	case 3:
-	{
-		// Initialize Renderer
-		FaceModel face_model = FaceModel("BFM17");
-		Renderer renderer(720, 720, face_model);
-		// Initialize a random face
-		Face face;
-		face.randomizeParameters();
-		// Initialize the default projection matrix which moves the face to origin
-		float scale_factor = 1 / 100.f;
-		MatrixXf coords = face.calculateVerticesDefault().reshaped(3, face.getFaceModel().getNumVertices()).transpose().cast<float>();
-		Vector3f mean = coords.colwise().mean();
-		Matrix4f projection_matrix = Matrix4f::Identity() * scale_factor;
-		projection_matrix.block(0, 3, 3, 1) = -mean * scale_factor;
-		projection_matrix(3, 3) = 1.f;
-		// Render the face and project it to a 2D plane
-		auto start = std::chrono::steady_clock::now();
-		std::pair img = renderer.render(face, projection_matrix, 720, 720);
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "time used: " << std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()) << "ms\n";
-		// Rescale the range of the depth to 0-255 in order to save the sample images
-		cv::Mat depth_to_visualize;
-		cv::normalize(img.second, depth_to_visualize, 0, 255, cv::NORM_MINMAX, CV_8UC1);
-		cv::imwrite("../../data/samples/2d face image/sample_image.png", img.first);
-		cv::imwrite("../../data/samples/2d face image/sample_image_depth.png", depth_to_visualize);
-		break;
-	}
-	default:
-		break;
 	}
 }
 
 
 int main(int argc, char** argv) {
+	omp_set_num_threads(omp_get_max_threads());
 	google::InitGoogleLogging(argv[0]);
 	omp_set_num_threads(omp_get_max_threads());
 	handleMenu();

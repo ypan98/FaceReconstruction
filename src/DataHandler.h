@@ -12,19 +12,19 @@
 #define LANDMARK_DIM 2
 
 // Full paths
-std::string PATH_TO_LANDMARK_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/landmark/");
-std::string PATH_TO_RGB_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/rgb/");
-std::string PATH_TO_DEPTH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/depth/");
-std::string PATH_TO_MESH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/outputMesh/");
+const std::string PATH_TO_LANDMARK_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/landmark/");
+const std::string PATH_TO_RGB_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/rgb/");
+const std::string PATH_TO_DEPTH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/depth/");
+const std::string PATH_TO_MESH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/outputMesh/");
 
-std::map<std::string, std::string> FACE_MODEL_TO_DIR_MAP = {
+const std::map<std::string, std::string> FACE_MODEL_TO_DIR_MAP = {
 	{ "BFM17", convert_path(get_full_path_to_project_root_dir() + "/data/BFM17.h5")},
 };
-std::map<std::string, std::string> FACE_MODEL_TO_LM_DIR_MAP = {
+const std::map<std::string, std::string> FACE_MODEL_TO_LM_DIR_MAP = {
 	{ "BFM17", convert_path(get_full_path_to_project_root_dir() + "/data/BFM17_68_Landmarks.txt")},
 };
 // h5 hierarchy path
-std::map<std::pair<std::string, std::string>, std::string> H5_PATH_MAP = {
+const std::map<std::pair<std::string, std::string>, std::string> H5_PATH_MAP = {
 	// BFM 2017
 	{ std::make_pair("shape", "triangulation"), "/shape/representer/cells"},	// Triangulation (identical for shape/expr/color)
 	{ std::make_pair("shape", "basis"), "/shape/model/pcaBasis"},
@@ -63,11 +63,11 @@ public:
 			cv::Mat rgbMat[3];
 			split(image, rgbMat);	//split source
 			MatrixXd r, g, b;
-			cv::cv2eigen(rgbMat[0], r);
+			cv::cv2eigen(rgbMat[2], r);
 			rgb[0] = r;
 			cv::cv2eigen(rgbMat[1], g);
 			rgb[1] = g;
-			cv::cv2eigen(rgbMat[2], b);
+			cv::cv2eigen(rgbMat[0], b);
 			rgb[2] = b;
 		}
 		catch (cv::Exception& e)
@@ -90,53 +90,18 @@ public:
 			std::cerr << e.what() << std::endl;
 		}
 	}
-		
-	static void computeNormals(MatrixXd& depthMap, std::vector<Vector3d>& normals){
-		const double maxDistanceHalved = 0.05;
-		int height = depthMap.rows();
-		int width = depthMap.cols();
-
-		for (int v = 1; v < height - 1; ++v) {
-            for (int u = 1; u < width - 1; ++u) {
-                unsigned int idx = v * width + u; // linearized index
-
-                const double du = 0.5 * (depthMap(v, u + 1) - depthMap(v, u - 1));
-                const double dv = 0.5 * (depthMap(v + 1, u) - depthMap(v - 1, u));
-                if (!std::isfinite(du) || !std::isfinite(dv) || abs(du) > maxDistanceHalved || abs(dv) > maxDistanceHalved) {
-                    normals[idx] = Vector3d(MINF, MINF, MINF);
-                    continue;
-                }
-
-                // Compute the normals using central differences. 
-                // normalsTmp[idx] = Vector3f(1, , 1); // Needs to be replaced.
-                Vector3d a(0,2,du);
-                Vector3d b(2,0,dv);
-                normals[idx] = Vector3d(a(1)*b(2)-b(1)*a(2),-(a(0)*b(2)-b(0)*a(2)),a(0)*b(1)-b(0)*a(1));
-                normals[idx].normalize();
-            }
-        }
-
-        // We set invalid normals for border regions.
-        for (int u = 0; u < width; ++u) {
-            normals[u] = Vector3d(MINF, MINF, MINF);
-            normals[u + (height - 1) * width] = Vector3d(MINF, MINF, MINF);
-        }
-        for (int v = 0; v < height; ++v) {
-            normals[v * width] = Vector3d(MINF, MINF, MINF);
-            normals[(width - 1) + v * width] = Vector3d(MINF, MINF, MINF);
-        }
-	}
 
 	// read basis from hdf5 file
 	static void readBasis(std::string faceModelName, std::string basisName, MatrixXd& basis) {
-		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP[faceModelName].c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP[std::make_pair(basisName, "basis")].c_str(), H5P_DEFAULT);
+		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP.at(faceModelName).c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP.at(std::make_pair(basisName, "basis")).c_str(), H5P_DEFAULT);
 		if (h5d < 0) std::cerr << "Error reading basis from: " << faceModelName << std::endl;
 		else {
 			std::vector<unsigned int> shape = get_h5_dataset_shape(h5d);
-			basis = MatrixXd(shape[1], shape[0]);
-			H5Dread(h5d, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &basis(0));
-			basis.transposeInPlace();
+			MatrixXd basis_ = MatrixXd(shape[1], shape[0]);
+			H5Dread(h5d, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &basis_(0));
+			basis_.transposeInPlace();
+			basis = basis_.block(0, 0, shape[0], 100);
 		}
 		H5Dclose(h5d);
 		H5Fclose(h5file);
@@ -144,8 +109,8 @@ public:
 	}
 	// read mean from hdf5 file
 	static void readMean(std::string faceModelName, std::string meanName, VectorXd& mean) {
-		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP[faceModelName].c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP[std::make_pair(meanName, "mean")].c_str(), H5P_DEFAULT);
+		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP.at(faceModelName).c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP.at(std::make_pair(meanName, "mean")).c_str(), H5P_DEFAULT);
 		if (h5d < 0) std::cerr << "Error reading mean from: " << faceModelName << std::endl;
 		else {
 			mean = VectorXd(get_h5_dataset_shape(h5d)[0]);
@@ -156,20 +121,21 @@ public:
 	}
 	// read variance from hdf5 file
 	static void readVariance(std::string faceModelName, std::string varianceName, VectorXd& variance) {
-		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP[faceModelName].c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP[std::make_pair(varianceName, "variance")].c_str(), H5P_DEFAULT);
+		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP.at(faceModelName).c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP.at(std::make_pair(varianceName, "variance")).c_str(), H5P_DEFAULT);
 		if (h5d < 0) std::cerr << "Error reading variance from: " << faceModelName << std::endl;
 		else {
-			variance = VectorXd(get_h5_dataset_shape(h5d)[0]);
-			H5Dread(h5d, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &variance(0));
+			VectorXd variance_ = VectorXd(get_h5_dataset_shape(h5d)[0]);
+			H5Dread(h5d, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &variance_(0));
+			variance = variance_.block(0, 0, 100, 1);
 		}
 		H5Dclose(h5d);
 		H5Fclose(h5file);
 	}
 	// read triangulation from hdf5 file
 	static void readTriangulation(std::string faceModelName, MatrixX3i& triangulation) {
-		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP[faceModelName].c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP[std::make_pair("shape", "triangulation")].c_str(), H5P_DEFAULT);
+		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP.at(faceModelName).c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP.at(std::make_pair("shape", "triangulation")).c_str(), H5P_DEFAULT);
 		if (h5d < 0) std::cerr << "Error reading triangulation from: " << faceModelName << std::endl;
 		else {
 			std::vector<unsigned int> shape = get_h5_dataset_shape(h5d);
@@ -181,8 +147,8 @@ public:
 	}
 	// read 68 facial landmarks (vertex index) of the corresponding face model
 	static void readFaceModelLandmarks(std::string faceModelName, VectorXi& landmarks) {
-		std::ifstream f(FACE_MODEL_TO_LM_DIR_MAP[faceModelName]);
-		if (!f.is_open()) std::cerr << "failed to open: " << FACE_MODEL_TO_LM_DIR_MAP[faceModelName] << std::endl;
+		std::ifstream f(FACE_MODEL_TO_LM_DIR_MAP.at(faceModelName));
+		if (!f.is_open()) std::cerr << "failed to open: " << FACE_MODEL_TO_LM_DIR_MAP.at(faceModelName) << std::endl;
 		landmarks = VectorXi(NUM_LANDMARKS);
 		int i = 0;
 		for (int i = 0; i < NUM_LANDMARKS; i++) f >> landmarks(i);
@@ -191,6 +157,7 @@ public:
 	static bool writeMesh(const Mesh& mesh, const std::string& filename) {
 		std::string pathToFile = PATH_TO_MESH_DIR + filename + ".off";
 
+		
 		//number of valid vertices
 		unsigned int nVertices = 0;
 		nVertices = mesh.vertices.rows();
@@ -216,15 +183,15 @@ public:
 		for (unsigned i = 0; i < nVertices; ++i) {
 			outFile << mesh.vertices.row(i) << " ";
 			for (int j = 0; j < 3; ++j) {
-				if (mesh.colors(i, j) < 0)
-					outFile << "0";
-				if (mesh.colors(i, j) > 255)
-					outFile << "255";
+				if (mesh.colors(i, j) < 0.)
+					outFile << double(0);
+				else if (mesh.colors(i, j) > 1.)
+					outFile << double(1);
 				else
 					outFile << mesh.colors(i, j);
 				outFile << " ";
 			}
-			outFile << "255" << std::endl;
+			outFile << double(255) << std::endl;
 		}
 
 		//save valid faces
