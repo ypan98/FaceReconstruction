@@ -51,7 +51,6 @@ public:
 		for (unsigned int i = 0; i < NUM_LANDMARKS; i++) {
 			for (unsigned int j = 0; j < LANDMARK_DIM; j++) {
 				f >> landmarks(i, j);
-				//landmarks(i, j) = double(int(landmarks(i, j) * 256. / 600.));
 			}
 		}
 	}
@@ -102,7 +101,7 @@ public:
 			MatrixXd basis_ = MatrixXd(shape[1], shape[0]);
 			H5Dread(h5d, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &basis_(0));
 			basis_.transposeInPlace();
-			basis = basis_.block(0, 0, shape[0], 76);
+			basis = basis_.block(0, 0, shape[0], 100);
 		}
 		H5Dclose(h5d);
 		H5Fclose(h5file);
@@ -128,7 +127,7 @@ public:
 		else {
 			VectorXd variance_ = VectorXd(get_h5_dataset_shape(h5d)[0]);
 			H5Dread(h5d, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &variance_(0));
-			variance = variance_.block(0, 0, 76, 1);
+			variance = variance_.block(0, 0, 100, 1);
 		}
 		H5Dclose(h5d);
 		H5Fclose(h5file);

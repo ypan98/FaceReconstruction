@@ -310,6 +310,12 @@ __global__ void raster_triangle(TriangleToRasterize* triangles, unsigned char* c
 						int depth = z_affine * INT_MAX;
 						atomicMin(&depth_buffer[index], depth);
 						if (depth_buffer[index] == depth) {
+
+							// We first store the affine barycentrinc weights
+							pixel_bary_coord_buffer[index * 6] = alpha;
+							pixel_bary_coord_buffer[index * 6 + 1] = beta;
+							pixel_bary_coord_buffer[index * 6 + 2] = gamma;
+
 							// perspective-correct barycentric weights
 							double d = alpha * triangle.one_over_z0 + beta * triangle.one_over_z1 + gamma * triangle.one_over_z2;
 							d = 1.0 / d;
@@ -331,9 +337,9 @@ __global__ void raster_triangle(TriangleToRasterize* triangles, unsigned char* c
 							color_buffer[index * 3 + 1] = green;
 							color_buffer[index * 3 + 2] = red;
 
-							pixel_bary_coord_buffer[index * 3] = alpha;
-							pixel_bary_coord_buffer[index * 3 + 1] = beta;
-							pixel_bary_coord_buffer[index * 3 + 2] = gamma;
+							pixel_bary_coord_buffer[index * 6 + 3] = alpha;
+							pixel_bary_coord_buffer[index * 6 + 4] = beta;
+							pixel_bary_coord_buffer[index * 6 + 5] = gamma;
 
 							pixel_triangle_buffer[index] = triangle_index;
 
@@ -393,7 +399,7 @@ void Renderer::clear_buffers() {
 	cudaMemsetAsync(device_vertex_normals, 0, num_vertices * 3 * sizeof(float), streams[0]);
 
 	cudaMemsetAsync(device_rendered_color, 0, viewport_height * viewport_width * 3 * sizeof(unsigned char), streams[1]);
-	cudaMemsetAsync(device_pixel_bary_coord, 0, viewport_height * viewport_width * 3 * sizeof(double), streams[2]);
+	cudaMemsetAsync(device_pixel_bary_coord, 0, viewport_height * viewport_width * 6 * sizeof(double), streams[2]);
 	cudaMemsetAsync(device_pixel_triangle, 0, viewport_height * viewport_width * sizeof(int), streams[3]);
 	cudaMemcpyAsync(device_depth, depth.data, viewport_height * viewport_width * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemsetAsync(device_pixel_triangle_normals, 0, viewport_height * viewport_width * 9 * sizeof(float), streams[4]);
@@ -410,7 +416,7 @@ void Renderer::initialiaze_rendering_context(FaceModel& face_model, int height, 
 	// Initialize CPU buffers
 	color_img = cv::Mat::zeros(viewport_height, viewport_width, CV_8UC3);
 	depth_img = cv::Mat::zeros(viewport_height, viewport_width, CV_32FC1);
-	pixel_bary_coord_buffer = cv::Mat::zeros(viewport_height, viewport_width, CV_64FC3);
+	pixel_bary_coord_buffer = cv::Mat::zeros(viewport_height, viewport_width, CV_64FC(6));
 	pixel_triangle_buffer = cv::Mat::zeros(viewport_height, viewport_width, CV_32S);
 	pixel_triangle_normals_buffer = cv::Mat::zeros(viewport_height, viewport_width, CV_32FC(9));
 
@@ -440,7 +446,7 @@ void Renderer::initialiaze_rendering_context(FaceModel& face_model, int height, 
 	// Allocate device memory for rendered image and other necessary information
 	cudaMallocAsync((void**)&device_rendered_color, viewport_height * viewport_width * 3 * sizeof(unsigned char), streams[8]);
 	cudaMallocAsync((void**)&device_depth, viewport_height * viewport_width * sizeof(int), streams[9]);
-	cudaMallocAsync((void**)&device_pixel_bary_coord, viewport_height * viewport_width * 3 * sizeof(double), streams[10]);
+	cudaMallocAsync((void**)&device_pixel_bary_coord, viewport_height * viewport_width * 6 * sizeof(double), streams[10]);
 	cudaMallocAsync((void**)&device_pixel_triangle, viewport_height * viewport_width * sizeof(int), streams[11]);
 	cudaMallocAsync((void**)&device_pixel_triangle_normals, viewport_height * viewport_width * 9 * sizeof(float), streams[12]);
 	cudaMallocAsync((void**)&device_depth_to_visualize, viewport_height * viewport_width * sizeof(float), streams[13]);
@@ -453,7 +459,7 @@ void Renderer::initialiaze_rendering_context(FaceModel& face_model, int height, 
 	cudaMemcpyAsync(device_depth_to_visualize, 0, viewport_height * viewport_width * sizeof(float), cudaMemcpyHostToDevice);
 
 	cudaMemsetAsync(device_rendered_color, 0, viewport_height * viewport_width * 3 * sizeof(unsigned char), streams[0]);
-	cudaMemsetAsync(device_pixel_bary_coord, 0, viewport_height * viewport_width * 3 * sizeof(double), streams[1]);
+	cudaMemsetAsync(device_pixel_bary_coord, 0, viewport_height * viewport_width * 6 * sizeof(double), streams[1]);
 	cudaMemsetAsync(device_pixel_triangle, 0, viewport_height * viewport_width * sizeof(int), streams[2]);
 	cudaMemsetAsync(device_depth_locked, 0, viewport_height * viewport_width * sizeof(int), streams[3]);
 	cudaMemsetAsync(device_pixel_triangle_normals, 0, viewport_height * viewport_width * 9 * sizeof(float), streams[4]);
@@ -503,7 +509,7 @@ void Renderer::render(Matrix4f& mvp_matrix, Matrix4f& mv_matrix, VectorXf& verti
 
 	cudaMemcpyAsync(color_img.data, device_rendered_color, viewport_height * viewport_width * 3 * sizeof(unsigned char), cudaMemcpyDeviceToHost);
 	cudaMemcpyAsync(depth_img.data, device_depth_to_visualize, viewport_height * viewport_width * sizeof(float), cudaMemcpyDeviceToHost);
-	cudaMemcpyAsync(pixel_bary_coord_buffer.data, device_pixel_bary_coord, viewport_height * viewport_width * 3 * sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpyAsync(pixel_bary_coord_buffer.data, device_pixel_bary_coord, viewport_height * viewport_width * 6 * sizeof(double), cudaMemcpyDeviceToHost);
 	cudaMemcpyAsync(pixel_triangle_buffer.data, device_pixel_triangle, viewport_height * viewport_width * sizeof(int), cudaMemcpyDeviceToHost);
 	cudaMemcpyAsync(pixel_triangle_normals_buffer.data, device_pixel_triangle_normals, viewport_height * viewport_width * 9 * sizeof(float), cudaMemcpyDeviceToHost);
 	cudaMemcpyAsync(re_rendered_vertex_color.data(), device_colors, num_vertices * 3 * sizeof(float), cudaMemcpyDeviceToHost);
