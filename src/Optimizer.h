@@ -11,12 +11,6 @@
 
 using namespace std;
 
-template <typename T>
-T implicit_line(T x, T y, const Matrix<T, 4, 1>& v1, const Matrix<T, 4, 1>& v2)
-{
-    return (v1(1, 0) - v2(1, 0)) * x + (v2(0, 0) - v1(0, 0)) * y + v1(0, 0) * v2(1, 0) - v2(0, 0) * v1(1, 0);
-};
-
 double SH_basis_function(Vector3d& normal, int basis_index) {
     switch (basis_index)
     {
@@ -51,15 +45,21 @@ double SH_basis_function(Vector3d& normal, int basis_index) {
 */
 class FeatureSimilarityEnergy {
 public:
-    FeatureSimilarityEnergy(const double& _landmarkWeight, const Vector2d& _landmark, const FaceModel* _faceModel, const unsigned& _vertexIdx, Matrix4d _perspective_matrix,
-        const unsigned& _viewport_width, const unsigned& _viewport_height) :
+    FeatureSimilarityEnergy(const double& _landmarkWeight, const Vector2d& _landmark, const double& _depth, const FaceModel* _faceModel, const Face* _face,
+        const unsigned& _vertexIdx, Matrix4d _perspective_matrix, const unsigned& _viewport_width, const unsigned& _viewport_height, const double& _z_near, 
+        const double& _z_far, const bool& _expression) :
         landmarkWeight(_landmarkWeight),
         landmark(_landmark),
+        depth(_depth),
         faceModel(_faceModel),
+        face(_face),
         vertexIdx(_vertexIdx),
         perspective_matrix(_perspective_matrix),
         viewport_width(_viewport_width),
-        viewport_height(_viewport_height)
+        viewport_height(_viewport_height),
+        z_near(_z_near),
+        z_far(_z_far),
+        expression(_expression)
     { }
 
     template <typename T>
@@ -67,10 +67,17 @@ public:
         Map<const Matrix<T, -1, 1> > alphaMap(alpha, BFM_ALPHA_SIZE);
         Map<const Matrix<T, -1, 1> > gammaMap(gamma, BFM_GAMMA_SIZE);
         // calculate vertex
-        Matrix<T, -1, -1> vertex = (*faceModel).getShapeMeanBlock(3 * vertexIdx, 3).cast<T>()
-            + (*faceModel).getExpMeanBlock(3 * vertexIdx, 3).cast<T>()
-            + (*faceModel).getShapeBasisRowBlock(3 * vertexIdx, 3) * alphaMap
-            + (*faceModel).getExpBasisRowBlock(3 * vertexIdx, 3) * gammaMap;
+        Matrix<T, -1, -1> vertex;
+        if (!expression) {
+            vertex = (*faceModel).getShapeMeanBlock(3 * vertexIdx, 3).cast<T>()
+                + (*faceModel).getExpMeanBlock(3 * vertexIdx, 3).cast<T>()
+                + (*faceModel).getShapeBasisRowBlock(3 * vertexIdx, 3) * alphaMap
+                + (*faceModel).getExpBasisRowBlock(3 * vertexIdx, 3) * gammaMap;
+        }
+        else {
+            vertex = (*face).getShapeBlock(3 * vertexIdx, 3).cast<T>()
+                + (*faceModel).getExpBasisRowBlock(3 * vertexIdx, 3) * gammaMap;
+        }
 
         // apply pose (extrinsics)
         T vertex_transformed[3];
@@ -80,229 +87,45 @@ public:
         Matrix<T, 4, 1> vertex_homogeneous;
         vertex_homogeneous << vertex_transformed[0], vertex_transformed[1], vertex_transformed[2], T(1);
         Matrix<T, -1, -1> vertex_clip_space = perspective_matrix * vertex_homogeneous;
-        T x_pixel_space = (vertex_clip_space(0, 0) / vertex_clip_space(3, 0) + T(1)) * (T(viewport_width) / T(2));
-        T y_pixel_space = T(viewport_height) - (vertex_clip_space(1, 0) / vertex_clip_space(3, 0) + T(1)) * (T(viewport_height) / T(2));
+        vertex_clip_space /= vertex_clip_space(3, 0);
+        T x_pixel_space = (vertex_clip_space(0, 0) + T(1)) * (T(viewport_width) / T(2));
+        T y_pixel_space = T(viewport_height) - (vertex_clip_space(1, 0) + T(1)) * (T(viewport_height) / T(2));
+        T z = T(1) - ((T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_clip_space(2, 0) * (T(z_far) - T(z_near)))) - T(z_near)) / (T(z_far) - T(z_near));
         residuals[0] = (T(landmark(0)) - x_pixel_space)*T(landmarkWeight);
         residuals[1] = (T(landmark(1)) - y_pixel_space)*T(landmarkWeight);
+        residuals[2] = (T(depth) - z) * T(landmarkWeight);
         return true;
     }
 
 private:
-    const double landmarkWeight;
+    const double landmarkWeight, depth, z_near, z_far;
     const FaceModel* faceModel;
+    const Face* face;
     const Vector2d landmark;
     const unsigned vertexIdx, viewport_width, viewport_height;
     Matrix4d perspective_matrix;
+    const bool expression;
 };
-
-
-//class GeometryPoint2PointConsistencyEnergy {
-//public:
-//    GeometryPoint2PointConsistencyEnergy(const double& _pointWeight, const Vector3i& _vertex_indices, const double& _depth_source, const FaceModel* _faceModel,
-//        const Matrix4d& _perspective_matrix, const double& _pixel_row, const double& _pixel_col, const double& _width, const double& _height, const double& _z_near, const double& _z_far) :
-//        pointWeight(_pointWeight),
-//        vertex_indices(_vertex_indices),
-//        depth_source(_depth_source),
-//        faceModel(_faceModel),
-//        perspective_matrix(_perspective_matrix),
-//        pixel_row(_pixel_row),
-//        pixel_col(_pixel_col),
-//        width(_width),
-//        height(_height),
-//        z_near(_z_near),
-//        z_far(_z_far)
-//    { }
-//
-//    template <typename T>
-//    bool operator() (const T const* alpha, const T const* gamma, const T* const extrinsicsArr, T* residuals) const {
-//        Map<const Matrix<T, BFM_ALPHA_SIZE, 1> > alphaMap(alpha);
-//        Map<const Matrix<T, BFM_GAMMA_SIZE, 1> > gammaMap(gamma);
-//
-//        Matrix<T, 4, 3> vertices;
-//        PoseIncrement<T> pose_inc(const_cast<T* const>(extrinsicsArr));
-//        for (int i = 0; i < 3; ++i) {
-//            // Calculate vertices
-//            vertices.block(0, i, 3, 1) = (*faceModel).getShapeMeanBlock(3 * vertex_indices(i), 3).cast<T>()
-//                + (*faceModel).getExpMeanBlock(3 * vertex_indices(i), 3).cast<T>()
-//                + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices(i), 3) * alphaMap
-//                + (*faceModel).getExpBasisRowBlock(3 * vertex_indices(i), 3) * gammaMap;
-//            vertices(3, i) = T(1);
-//
-//            // Apply transformation
-//            T* data;
-//            data = &vertices.data()[i * 4];
-//            pose_inc.apply(data, data);
-//
-//            // Apply perspective projection
-//            vertices.col(i) = perspective_matrix * vertices.col(i);
-//
-//            // To clip space
-//            vertices.col(i) = vertices.col(i) / vertices.col(i)(3);
-//
-//            // To pixel space
-//            vertices(0, i) = (vertices(0, i) + T(1)) * (T(width) / T(2));
-//            vertices(1, i) = T(height) - (vertices(1, i) + T(1)) * (T(height) / T(2));
-//        }
-//
-//        T one_overs[3];
-//        Matrix<T, 4, 1> vector_0 = vertices.col(0);
-//        Matrix<T, 4, 1> vector_1 = vertices.col(1);
-//        Matrix<T, 4, 1> vector_2 = vertices.col(2);
-//
-//        one_overs[0] = T(1) / implicit_line(vertices(0, 0), vertices(1, 0), vector_1, vector_2);
-//        one_overs[1] = T(1) / implicit_line(vertices(0, 1), vertices(1, 1), vector_2, vector_0);
-//        one_overs[2] = T(1) / implicit_line(vertices(0, 2), vertices(1, 2), vector_0, vector_1);
-//
-//        T alpha_beta_gamma[3];
-//
-//        alpha_beta_gamma[0] = implicit_line(T(pixel_col), T(pixel_row), vector_1, vector_2) * one_overs[0];
-//        alpha_beta_gamma[1] = implicit_line(T(pixel_col), T(pixel_row), vector_2, vector_0) * one_overs[1];
-//        alpha_beta_gamma[2] = implicit_line(T(pixel_col), T(pixel_row), vector_0, vector_1) * one_overs[2];
-//
-//        T zs;
-//        zs = alpha_beta_gamma[0] * vertices.col(0)(2) + alpha_beta_gamma[1] * vertices.col(1)(2) + alpha_beta_gamma[2] * vertices.col(2)(2);
-//        zs = T(1) - ((T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - zs * (T(z_far) - T(z_near)))) - T(z_near)) / (T(z_far) - T(z_near));
-//
-//        //      Point to point distance
-//        residuals[0] = (zs - depth_source) * T(pointWeight);
-//        return true;
-//    }
-//private:
-//    const double pointWeight, depth_source, pixel_row, pixel_col, width, height, z_near, z_far;
-//    const Vector3i vertex_indices;
-//    const Vector3d point_normal_source;
-//    const FaceModel* faceModel;
-//    const Matrix4d perspective_matrix;
-//};
-//
-//class GeometryPoint2PlaneConsistencyEnergy {
-//public:
-//    GeometryPoint2PlaneConsistencyEnergy(const double& _planeWeight, const Vector<int, 15>& _vertex_indices, const double& _depth_source, const Vector3d& _point_normal_source, const FaceModel* _faceModel,
-//        const Matrix4d& _perspective_matrix, const double& _pixel_row, const double& _pixel_col, const double& _width, const double& _height, const double& _z_near, const double& _z_far) :
-//        planeWeight(_planeWeight),
-//        vertex_indices(_vertex_indices),
-//        point_normal_source(_point_normal_source),
-//        depth_source(_depth_source),
-//        faceModel(_faceModel),
-//        perspective_matrix(_perspective_matrix),
-//        pixel_row(_pixel_row),
-//        pixel_col(_pixel_col),
-//        width(_width),
-//        height(_height),
-//        z_near(_z_near),
-//        z_far(_z_far)
-//    { }
-//
-//    template <typename T>
-//    bool operator() (const T const* alpha, const T const* gamma, const T* const extrinsicsArr, T* residuals) const {
-//        Map<const Matrix<T, BFM_ALPHA_SIZE, 1> > alphaMap(alpha);
-//        Map<const Matrix<T, BFM_GAMMA_SIZE, 1> > gammaMap(gamma);
-//
-//        Matrix<T, 4, 15> vertices;
-//        PoseIncrement<T> pose_inc(const_cast<T* const>(extrinsicsArr));
-//        for (int i = 0; i < 15; ++i) {
-//            // Calculate vertices
-//            vertices.block(0, i, 3, 1) = (*faceModel).getShapeMeanBlock(3 * vertex_indices(i), 3).cast<T>()
-//                    + (*faceModel).getExpMeanBlock(3 * vertex_indices(i), 3).cast<T>()
-//                    + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices(i), 3) * alphaMap
-//                    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices(i), 3) * gammaMap;
-//            vertices(3, i) = T(1);
-//
-//            // Apply transformation
-//            T* data;
-//            data = &vertices.data()[i * 4];
-//            pose_inc.apply(data, data);
-//
-//            // Apply perspective projection
-//            vertices.col(i) = perspective_matrix * vertices.col(i);
-//
-//            // To clip space
-//            vertices.col(i) = vertices.col(i) / vertices.col(i)(3);
-//
-//            // To pixel space
-//            vertices(0, i) = (vertices(0, i) + T(1)) * (T(width) / T(2));
-//            vertices(1, i) = T(height) - (vertices(1, i) + T(1)) * (T(height) / T(2));
-//        }
-//
-//        T one_overs[15];
-//        for (int i = 0; i < 5; ++i) {
-//            Matrix<T, 4, 1> vector_0 = vertices.col(i * 3);
-//            Matrix<T, 4, 1> vector_1 = vertices.col(i * 3 + 1);
-//            Matrix<T, 4, 1> vector_2 = vertices.col(i * 3 + 2);
-//
-//            one_overs[i * 3] = T(1) / implicit_line(vertices(0, i * 3), vertices(1, i * 3), vector_1, vector_2);
-//            one_overs[i * 3 + 1] = T(1) / implicit_line(vertices(0, i * 3 + 1), vertices(1, i * 3 + 1), vector_2, vector_0);
-//            one_overs[i * 3 + 2] = T(1) / implicit_line(vertices(0, i * 3 + 2), vertices(1, i * 3 + 2), vector_0, vector_1);
-//        }
-//
-//        T alpha_beta_gamma[15];
-//
-//        for (int i = 0; i < 5; ++i) {
-//            double offset_x, offset_y;
-//            offset_x = 0;
-//            offset_y = 0;
-//            if (i > 2){
-//                offset_x = i * 2 - 7.;
-//                offset_y = 0.;
-//            }
-//            else if (i > 0) {
-//                offset_x = 0.;
-//                offset_y = i * 2 - 3.;
-//            }
-//            Matrix<T, 4, 1> vector_0 = vertices.col(i * 3);
-//            Matrix<T, 4, 1> vector_1 = vertices.col(i * 3 + 1);
-//            Matrix<T, 4, 1> vector_2 = vertices.col(i * 3 + 2);
-//
-//            alpha_beta_gamma[i * 3] = implicit_line(T(pixel_col + offset_x), T(pixel_row + offset_y), vector_1, vector_2) * one_overs[i * 3];
-//            alpha_beta_gamma[i * 3 + 1] = implicit_line(T(pixel_col + offset_x), T(pixel_row + offset_y), vector_2, vector_0) * one_overs[i * 3 + 1];
-//            alpha_beta_gamma[i * 3 + 2] = implicit_line(T(pixel_col + offset_x), T(pixel_row + offset_y), vector_0, vector_1) * one_overs[i * 3 + 2];
-//        }
-//
-//        T zs[5];
-//        for (int i = 0; i < 5; ++i) {
-//            zs[i] = alpha_beta_gamma[i * 3] * vertices.col(i * 3)(2) + alpha_beta_gamma[i * 3 + 1] * vertices.col(i * 3 + 1)(2) + alpha_beta_gamma[i * 3 + 2] * vertices.col(i * 3 + 2)(2);
-//            zs[i] = T(1) - ((T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - zs[i] * (T(z_far) - T(z_near)))) - T(z_near)) / (T(z_far) - T(z_near));
-//
-//        }
-//
-//        Vector<T, 3> dzdx;
-//        dzdx << T(2), T(0), zs[4] - zs[3];
-//        Vector<T, 3> dzdy;
-//        dzdy << T(0), T(2), zs[2] - zs[1];
-//        Vector<T, 3> point_normal_estimated = -(dzdx).cross(dzdy);
-//        point_normal_estimated.normalize();
-// 
-//        //      Point to plane distance from model to input
-//        residuals[0] = T(planeWeight) * ((zs[0] - T(depth_source)) * T(point_normal_source(2)));
-//        //      Point to plane distance from input to model
-//        residuals[1] = T(planeWeight) * ((T(depth_source) - zs[0]) * point_normal_estimated(2));
-//        return true;
-//    }
-//private:
-//    const double planeWeight, depth_source, pixel_row, pixel_col, width, height, z_near, z_far;
-//    const Vector<int, 15> vertex_indices;
-//    const Vector3d point_normal_source;
-//    const FaceModel* faceModel;
-//    const Matrix4d perspective_matrix;
-//};
 
 class GeometryPoint2PointConsistencyEnergy {
 public:
     GeometryPoint2PointConsistencyEnergy(const double& _pointWeight, const Vector3i& _vertex_indices, const Vector3d& _bary_coord, const double& _depth_source, 
-        const FaceModel* _faceModel, const Matrix4d& _perspective_matrix, const double& _pixel_row, const double& _pixel_col, const double& _width, 
-        const double& _height, const double& _z_near, const double& _z_far) :
+        const FaceModel* _faceModel, const Face* _face, const Matrix4d& _perspective_matrix, const double& _pixel_row, const double& _pixel_col, const double& _width, 
+        const double& _height, const double& _z_near, const double& _z_far, const bool& _expression) :
         pointWeight(_pointWeight),
         vertex_indices(_vertex_indices),
         bary_coord(_bary_coord),
         depth_source(_depth_source),
         faceModel(_faceModel),
+        face(_face),
         perspective_matrix(_perspective_matrix),
         pixel_row(_pixel_row),
         pixel_col(_pixel_col),
         width(_width),
         height(_height),
         z_near(_z_near),
-        z_far(_z_far)
+        z_far(_z_far),
+        expression(_expression)
     { }
 
     template <typename T>
@@ -314,10 +137,16 @@ public:
         PoseIncrement<T> pose_inc(const_cast<T* const>(extrinsicsArr));
         for (int i = 0; i < 3; ++i) {
             // Calculate vertices
-            vertices.block(0, i, 3, 1) = (*faceModel).getShapeMeanBlock(3 * vertex_indices(i), 3).cast<T>()
-                + (*faceModel).getExpMeanBlock(3 * vertex_indices(i), 3).cast<T>()
-                + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices(i), 3) * alphaMap
-                + (*faceModel).getExpBasisRowBlock(3 * vertex_indices(i), 3) * gammaMap;
+            if (!expression) {
+                vertices.block(0, i, 3, 1) = (*faceModel).getShapeMeanBlock(3 * vertex_indices(i), 3).cast<T>()
+                    + (*faceModel).getExpMeanBlock(3 * vertex_indices(i), 3).cast<T>()
+                    + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices(i), 3) * alphaMap
+                    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices(i), 3) * gammaMap;
+            }
+            else {
+                vertices.block(0, i, 3, 1) = (*face).getShapeBlock(3 * vertex_indices(i), 3).cast<T>()
+                    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices(i), 3) * gammaMap;
+            }
             vertices(3, i) = T(1);
 
             // Apply transformation
@@ -353,27 +182,31 @@ private:
     const Vector3i vertex_indices;
     const Vector3d point_normal_source, bary_coord;
     const FaceModel* faceModel;
+    const Face* face;
     const Matrix4d perspective_matrix;
+    const bool expression;
 };
 
 class GeometryPoint2PlaneConsistencyEnergy {
 public:
     GeometryPoint2PlaneConsistencyEnergy(const double& _planeWeight, const Vector<int, 15>& _vertex_indices, const Vector<double, 15>& _bary_coords, const double& _depth_source, 
-        const Vector3d& _point_normal_source, const FaceModel* _faceModel, const Matrix4d& _perspective_matrix, const double& _pixel_row, const double& _pixel_col, const double& _width, 
-        const double& _height, const double& _z_near, const double& _z_far) :
+        const Vector3d& _point_normal_source, const FaceModel* _faceModel, const Face* _face, const Matrix4d& _perspective_matrix, const double& _pixel_row, const double& _pixel_col, 
+        const double& _width, const double& _height, const double& _z_near, const double& _z_far, const bool& _expression) :
         planeWeight(_planeWeight),
         vertex_indices(_vertex_indices),
         bary_coords(_bary_coords),
         point_normal_source(_point_normal_source),
         depth_source(_depth_source),
         faceModel(_faceModel),
+        face(_face),
         perspective_matrix(_perspective_matrix),
         pixel_row(_pixel_row),
         pixel_col(_pixel_col),
         width(_width),
         height(_height),
         z_near(_z_near),
-        z_far(_z_far)
+        z_far(_z_far),
+        expression(_expression)
     { }
 
     template <typename T>
@@ -385,10 +218,16 @@ public:
         PoseIncrement<T> pose_inc(const_cast<T* const>(extrinsicsArr));
         for (int i = 0; i < 15; ++i) {
             // Calculate vertices
-            vertices.block(0, i, 3, 1) = (*faceModel).getShapeMeanBlock(3 * vertex_indices(i), 3).cast<T>()
-                + (*faceModel).getExpMeanBlock(3 * vertex_indices(i), 3).cast<T>()
-                + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices(i), 3) * alphaMap
-                + (*faceModel).getExpBasisRowBlock(3 * vertex_indices(i), 3) * gammaMap;
+            if (!expression) {
+                vertices.block(0, i, 3, 1) = (*faceModel).getShapeMeanBlock(3 * vertex_indices(i), 3).cast<T>()
+                    + (*faceModel).getExpMeanBlock(3 * vertex_indices(i), 3).cast<T>()
+                    + (*faceModel).getShapeBasisRowBlock(3 * vertex_indices(i), 3) * alphaMap
+                    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices(i), 3) * gammaMap;
+            }
+            else {
+                vertices.block(0, i, 3, 1) = (*face).getShapeBlock(3 * vertex_indices(i), 3).cast<T>()
+                    + (*faceModel).getExpBasisRowBlock(3 * vertex_indices(i), 3) * gammaMap;
+            }
             vertices(3, i) = T(1);
 
             // Apply transformation
@@ -441,232 +280,26 @@ private:
     const Vector<double, 15> bary_coords;
     const Vector3d point_normal_source;
     const FaceModel* faceModel;
-    const Matrix4d perspective_matrix;
-};
-
-//--------------------------------------------------Energy Terms Used for Face Reconstruction From Single Image--------------------------------------------------//
-
-
-//--------------------------------------------------Energy Terms Designed for Facial Expression pipeline--------------------------------------------------//
-class ExpressionFeatureSimilarityEnergy {
-public:
-    ExpressionFeatureSimilarityEnergy(const double& _landmarkWeight, const Vector2d& _landmark, const Face* _face, const FaceModel* _faceModel, const unsigned& _vertexIdx, Matrix4d _perspective_matrix,
-        const unsigned& _viewport_width, const unsigned& _viewport_height) :
-        landmarkWeight(_landmarkWeight),
-        landmark(_landmark),
-        face(_face),
-        faceModel(_faceModel),
-        vertexIdx(_vertexIdx),
-        perspective_matrix(_perspective_matrix),
-        viewport_width(_viewport_width),
-        viewport_height(_viewport_height)
-    { }
-
-    template <typename T>
-    bool operator()(const T const* gamma, const T* const extrinsicsArr, T* residuals) const {
-        // ************* USING EIGEN (very slow...) ***************
-        Map<const Matrix<T, -1, 1> > gammaMap(alpha, BFM_ALPHA_SIZE);
-        // calculate vertex
-        Matrix<T, -1, -1> vertex = (*face).getShapeBlock(3 * vertexIdx, 3).cast<T>()
-            + (*faceModel).getExpBasisRowBlock(3 * vertexIdx, 3) * gammaMap;
-
-        // apply pose (extrinsics)
-        T vertex_transformed[3];
-        PoseIncrement<T> pose_inc(const_cast<T* const>(extrinsicsArr));
-        pose_inc.apply(vertex.data(), vertex_transformed);
-        // apply perspective projection (instrinsics)
-        Matrix<T, 4, 1> vertex_homogeneous;
-        vertex_homogeneous << vertex_transformed[0], vertex_transformed[1], vertex_transformed[2], T(1);
-        Matrix<T, -1, -1> vertex_clip_space = perspective_matrix * vertex_homogeneous;
-        T x_pixel_space = (vertex_clip_space(0, 0) / vertex_clip_space(3, 0) + T(1)) * (T(viewport_width) / T(2));
-        T y_pixel_space = T(viewport_height) - (vertex_clip_space(1, 0) / vertex_clip_space(3, 0) + T(1)) * (T(viewport_height) / T(2));
-        residuals[0] = (T(landmark(0)) - x_pixel_space) * T(landmarkWeight);
-        residuals[1] = (T(landmark(1)) - y_pixel_space) * T(landmarkWeight);
-        return true;
-    }
-
-private:
-    const double landmarkWeight;
     const Face* face;
-    const FaceModel* faceModel;
-    const Vector2d landmark;
-    const unsigned vertexIdx, viewport_width, viewport_height;
-    Matrix4d perspective_matrix;
-};
-
-class ExpressionGeometryPoint2PointConsistencyEnergy {
-public:
-    ExpressionGeometryPoint2PointConsistencyEnergy(const double& _pointWeight, const Vector3i& _vertex_indices, const Face* _face, const FaceModel* _faceModel,
-        const double& _depth_source, Matrix4d _perspective_matrix, const double& _pixel_row, const double& _pixel_col,
-        const double& _width, const double& _height) :
-        pointWeight(_pointWeight),
-        vertex_indices(_vertex_indices),
-        faceModel(_faceModel),
-        face(_face),
-        depth_source(_depth_source),
-        perspective_matrix(_perspective_matrix),
-        pixel_row(_pixel_row),
-        pixel_col(_pixel_col),
-        width(_width),
-        height(_height)
-    { }
-
-    template <typename T>
-    bool operator() (const T const* gamma, const T* const extrinsicsArr, T* residuals) const {
-        Map<const Matrix<T, -1, 1> > gammaMap(gamma, BFM_GAMMA_SIZE);
-
-        // calculate vertex
-        Matrix<T, -1, -1> vertex_0 = (*faceModel).getShapeBlock(3 * vertex_indices(0), 3).cast<T>()
-            + (*faceModel).getExpBasisRowBlock(3 * vertex_indices(0), 3) * gammaMap;
-
-        Matrix<T, -1, -1> vertex_1 = (*faceModel).getShapeBlock(3 * vertex_indices(1), 3).cast<T>()
-            + (*faceModel).getExpBasisRowBlock(3 * vertex_indices(1), 3) * gammaMap;
-
-        Matrix<T, -1, -1> vertex_2 = (*faceModel).getShapeBlock(3 * vertex_indices(2), 3).cast<T>()
-            + (*faceModel).getExpBasisRowBlock(3 * vertex_indices(2), 3) * gammaMap;
-
-        // apply pose (extrinsics)
-        T vertex_0_transformed[3];
-        T vertex_1_transformed[3];
-        T vertex_2_transformed[3];
-
-        PoseIncrement<T> pose_inc(const_cast<T* const>(extrinsicsArr));
-        pose_inc.apply(vertex_0.data(), vertex_0_transformed);
-        pose_inc.apply(vertex_1.data(), vertex_1_transformed);
-        pose_inc.apply(vertex_2.data(), vertex_2_transformed);
-
-        Matrix<T, 4, 1> vertex_0_homogeneous;
-        vertex_0_homogeneous << vertex_0_transformed[0], vertex_0_transformed[1], vertex_0_transformed[2], T(1);
-        Matrix<T, 4, 1> vertex_1_homogeneous;
-        vertex_1_homogeneous << vertex_1_transformed[0], vertex_1_transformed[1], vertex_1_transformed[2], T(1);
-        Matrix<T, 4, 1> vertex_2_homogeneous;
-        vertex_2_homogeneous << vertex_2_transformed[0], vertex_2_transformed[1], vertex_2_transformed[2], T(1);
-
-        // apply perspective projection (instrinsics)
-        Matrix<T, 4, 1> vertex_0_clip = perspective_matrix * vertex_0_homogeneous;
-        Matrix<T, 4, 1> vertex_1_clip = perspective_matrix * vertex_1_homogeneous;
-        Matrix<T, 4, 1> vertex_2_clip = perspective_matrix * vertex_2_homogeneous;
-
-        T one_over_z0 = T(1) / vertex_0_clip(3, 0);
-        T one_over_z1 = T(1) / vertex_1_clip(3, 0);
-        T one_over_z2 = T(1) / vertex_2_clip(3, 0);
-
-        Matrix<T, 4, 1> vertex_0_screen = vertex_0_clip / vertex_0_clip(3, 0);
-        Matrix<T, 4, 1> vertex_1_screen = vertex_1_clip / vertex_1_clip(3, 0);
-        Matrix<T, 4, 1> vertex_2_screen = vertex_2_clip / vertex_2_clip(3, 0);
-
-        // To pixel space
-        vertex_0_screen(0, 0) = (vertex_0_screen(0, 0) + T(1)) * (T(width) / T(2));
-        vertex_0_screen(1, 0) = T(height) - (vertex_0_screen(1, 0) + T(1)) * (T(height) / T(2));
-        vertex_1_screen(0, 0) = (vertex_1_screen(0, 0) + T(1)) * (T(width) / T(2));
-        vertex_1_screen(1, 0) = T(height) - (vertex_1_screen(1, 0) + T(1)) * (T(height) / T(2));
-        vertex_2_screen(0, 0) = (vertex_2_screen(0, 0) + T(1)) * (T(width) / T(2));
-        vertex_2_screen(1, 0) = T(height) - (vertex_2_screen(1, 0) + T(1)) * (T(height) / T(2));
-
-        T one_over_v0ToLine12 = T(1) / implicit_line(vertex_0_screen(0, 0), vertex_0_screen(1, 0), vertex_1_screen, vertex_2_screen);
-        T one_over_v1ToLine20 = T(1) / implicit_line(vertex_1_screen(0, 0), vertex_1_screen(1, 0), vertex_2_screen, vertex_0_screen);
-        T one_over_v2ToLine01 = T(1) / implicit_line(vertex_2_screen(0, 0), vertex_2_screen(1, 0), vertex_0_screen, vertex_1_screen);
-
-        T alpha_bary = implicit_line(T(pixel_col), T(pixel_row), vertex_1_screen, vertex_2_screen) * one_over_v0ToLine12;
-        T beta_bary = implicit_line(T(pixel_col), T(pixel_row), vertex_2_screen, vertex_0_screen) * one_over_v1ToLine20;
-        T gamma_bary = implicit_line(T(pixel_col), T(pixel_row), vertex_0_screen, vertex_1_screen) * one_over_v2ToLine01;
-
-        T x = alpha_bary * vertex_0_screen(0, 0) + beta_bary * vertex_1_screen(0, 0) + gamma_bary * vertex_2_screen(0, 0);
-        T y = alpha_bary * vertex_0_screen(1, 0) + beta_bary * vertex_1_screen(1, 0) + gamma_bary * vertex_2_screen(1, 0);
-        T depth = alpha_bary * vertex_0_screen(2, 0) + beta_bary * vertex_1_screen(2, 0) + gamma_bary * vertex_2_screen(2, 0);
-        residuals[0] = (x - T(pixel_col)) * T(pointWeight);
-        residuals[1] = (y - T(pixel_row)) * T(pointWeight);
-        residuals[2] = (depth_source - depth) * T(pointWeight);
-        return true;
-    }
-private:
-    const double pointWeight, depth_source, pixel_row, pixel_col, width, height;
-    const Vector3i vertex_indices;
-    const Face* face;
-    const FaceModel* faceModel;
     const Matrix4d perspective_matrix;
+    const bool expression;
 };
 
-class ShCoefficientsConsistencyEnergy {
-public:
-    ShCoefficientsConsistencyEnergy(const double& weight, const Vector3d& source_color, const Vector3i& vertexIndices, const Vector3d& vertexWeights, const Face* face,
-        const Vector<double, 9>& sh_basis_vertex_0, const Vector<double, 9>& sh_basis_vertex_1, const Vector<double, 9>& sh_basis_vertex_2) :
-        //initialization
-        m_weight{ weight },
-        m_source_color{ source_color },
-        m_vertexIndices{ vertexIndices },
-        m_vertexWeights{ vertexWeights },
-        m_face{ face },
-        m_sh_basis_vertex_0{ sh_basis_vertex_0 },
-        m_sh_basis_vertex_1{ sh_basis_vertex_1 },
-        m_sh_basis_vertex_2{ sh_basis_vertex_2 }
-    { }
-
-    template <typename T>
-    bool operator()(const T* const sh_red_coefficients, const T* const sh_green_coefficients, const T* const sh_blue_coefficients, T* residuals) const {
-        Map<const Matrix<T, -1, 1> > shRedCoefficientsMap(sh_red_coefficients, 9);
-        Map<const Matrix<T, -1, 1> > shGreenCoefficientsMap(sh_green_coefficients, 9);
-        Map<const Matrix<T, -1, 1> > shBlueCoefficientsMap(sh_blue_coefficients, 9);
-
-        Matrix<T, -1, -1> vertex_0_color = (*m_faceModel).getColorBlock(3 * m_vertexIndices(0), 3).cast<T>();
-        Matrix<T, -1, -1> vertex_1_color = (*m_faceModel).getColorBlock(3 * m_vertexIndices(1), 3).cast<T>();
-        Matrix<T, -1, -1> vertex_2_color = (*m_faceModel).getColorBlock(3 * m_vertexIndices(2), 3).cast<T>();
-
-        T pi = T(3.1415926);
-
-        T irradiance_vertex_0[3] = { T(0), T(0), T(0) };
-        T irradiance_vertex_1[3] = { T(0), T(0), T(0) };
-        T irradiance_vertex_2[3] = { T(0), T(0), T(0) };
-
-        for (int j = 0; j < 9; ++j) {
-            irradiance_vertex_0[0] += T(m_sh_basis_vertex_0(j)) * shRedCoefficientsMap(j, 0);
-            irradiance_vertex_1[0] += T(m_sh_basis_vertex_1(j)) * shRedCoefficientsMap(j, 0);
-            irradiance_vertex_2[0] += T(m_sh_basis_vertex_2(j)) * shRedCoefficientsMap(j, 0);
-        }
-        for (int j = 0; j < 9; ++j) {
-            irradiance_vertex_0[1] += T(m_sh_basis_vertex_0(j)) * shGreenCoefficientsMap(j, 0);
-            irradiance_vertex_1[1] += T(m_sh_basis_vertex_1(j)) * shGreenCoefficientsMap(j, 0);
-            irradiance_vertex_2[1] += T(m_sh_basis_vertex_2(j)) * shGreenCoefficientsMap(j, 0);
-        }
-        for (int j = 0; j < 9; ++j) {
-            irradiance_vertex_0[2] += T(m_sh_basis_vertex_0(j)) * shBlueCoefficientsMap(j, 0);
-            irradiance_vertex_1[2] += T(m_sh_basis_vertex_1(j)) * shBlueCoefficientsMap(j, 0);
-            irradiance_vertex_2[2] += T(m_sh_basis_vertex_2(j)) * shBlueCoefficientsMap(j, 0);
-        }
-
-        for (int i = 0; i < 3; ++i) {
-            vertex_0_color(i) *= irradiance_vertex_0[i] / pi;
-            vertex_1_color(i) *= irradiance_vertex_1[i] / pi;
-            vertex_2_color(i) *= irradiance_vertex_2[i] / pi;
-            residuals[i] = (T(m_source_color[i]) / T(255) - ((vertex_0_color(i) * T(m_vertexWeights(0)) + vertex_1_color(i) * T(m_vertexWeights(1)) + vertex_2_color(i) * T(m_vertexWeights(2))))) * m_weight;
-        }
-        return true;
-    }
-private:
-    const Vector3d m_source_color;
-    const Vector3i m_vertexIndices;
-    const Vector3d m_vertexWeights;
-    const Vector<double, 9> m_sh_basis_vertex_0, m_sh_basis_vertex_1, m_sh_basis_vertex_2;
-    const Face* m_face;
-    const double m_weight;
-};
-//--------------------------------------------------Energy Terms Designed for Facial Expression pipeline--------------------------------------------------//
-
-
-//-----------------------------------------------------------Energy Terms Used In Both Cases-------------------------------------------------------------//
 class ColorConsistencyEnergy {
 public:
     ColorConsistencyEnergy(const double& weight, const Vector3d& source_color, const Vector3i& vertexIndices, const Vector3d& vertexWeights, const FaceModel* faceModel,
-        const Vector<double, 9>& sh_basis_vertex_0, const Vector<double, 9>& sh_basis_vertex_1, const Vector<double, 9>& sh_basis_vertex_2) :
+        const Face* face, const Vector<double, 9>& sh_basis_vertex_0, const Vector<double, 9>& sh_basis_vertex_1, const Vector<double, 9>& sh_basis_vertex_2, const bool& expression) :
         //initialization
         m_weight{ weight },
         m_source_color{ source_color },
         m_vertexIndices{ vertexIndices },
         m_vertexWeights{ vertexWeights },
         m_faceModel{ faceModel },
+        m_face{ face },
         m_sh_basis_vertex_0{ sh_basis_vertex_0 },
         m_sh_basis_vertex_1{ sh_basis_vertex_1 },
-        m_sh_basis_vertex_2{ sh_basis_vertex_2 }
+        m_sh_basis_vertex_2{ sh_basis_vertex_2 },
+        m_expression{ expression }
     { }
 
     template <typename T>
@@ -676,12 +309,23 @@ public:
         Map<const Matrix<T, -1, 1> > shGreenCoefficientsMap(sh_green_coefficients, 9);
         Map<const Matrix<T, -1, 1> > shBlueCoefficientsMap(sh_blue_coefficients, 9);
 
-        Matrix<T, -1, -1> vertex_0_color = (*m_faceModel).getColorMeanBlock(3 * m_vertexIndices(0), 3).cast<T>()
-            + (*m_faceModel).getColorBasisRowBlock(3 * m_vertexIndices(0), 3) * betaMap;
-        Matrix<T, -1, -1> vertex_1_color = (*m_faceModel).getColorMeanBlock(3 * m_vertexIndices(1), 3).cast<T>()
-            + (*m_faceModel).getColorBasisRowBlock(3 * m_vertexIndices(1), 3) * betaMap;
-        Matrix<T, -1, -1> vertex_2_color = (*m_faceModel).getColorMeanBlock(3 * m_vertexIndices(2), 3).cast<T>()
-            + (*m_faceModel).getColorBasisRowBlock(3 * m_vertexIndices(2), 3) * betaMap;
+        Matrix<T, -1, -1> vertex_0_color;
+        Matrix<T, -1, -1> vertex_1_color;
+        Matrix<T, -1, -1> vertex_2_color;
+
+        if (!m_expression) {
+            vertex_0_color = (*m_faceModel).getColorMeanBlock(3 * m_vertexIndices(0), 3).cast<T>()
+                + (*m_faceModel).getColorBasisRowBlock(3 * m_vertexIndices(0), 3) * betaMap;
+            vertex_1_color = (*m_faceModel).getColorMeanBlock(3 * m_vertexIndices(1), 3).cast<T>()
+                + (*m_faceModel).getColorBasisRowBlock(3 * m_vertexIndices(1), 3) * betaMap;
+            vertex_2_color = (*m_faceModel).getColorMeanBlock(3 * m_vertexIndices(2), 3).cast<T>()
+                + (*m_faceModel).getColorBasisRowBlock(3 * m_vertexIndices(2), 3) * betaMap;
+        }
+        else {
+            vertex_0_color = (*m_face).getColorBlock(3 * m_vertexIndices(0), 3).cast<T>();
+            vertex_1_color = (*m_face).getColorBlock(3 * m_vertexIndices(1), 3).cast<T>();
+            vertex_2_color = (*m_face).getColorBlock(3 * m_vertexIndices(2), 3).cast<T>();
+        }
 
         T pi = T(3.1415926);
 
@@ -719,19 +363,20 @@ private:
     const Vector3d m_vertexWeights;
     const Vector<double, 9> m_sh_basis_vertex_0, m_sh_basis_vertex_1, m_sh_basis_vertex_2;
     const FaceModel* m_faceModel;
+    const Face* m_face;
     const double m_weight;
+    const bool m_expression;
 };
 
 class TextureColorConsistencyEnergy {
 public:
-    TextureColorConsistencyEnergy(const double& weight, const Vector3d& source_color, const Vector3d& vertexWeights, const FaceModel* faceModel,
+    TextureColorConsistencyEnergy(const double& weight, const Vector3d& source_color, const Vector3d& vertexWeights,
         const Vector<double, 9>& sh_basis_vertex_0, const Vector<double, 9>& sh_basis_vertex_1, const Vector<double, 9>& sh_basis_vertex_2,
         const Vector<double, 9>& sh_red_coefficients, const Vector<double, 9>& sh_green_coefficients, const Vector<double, 9>& sh_blue_coefficients) :
         //initialization
         m_weight{ weight },
         m_source_color{ source_color },
         m_vertexWeights{ vertexWeights },
-        m_faceModel{ faceModel },
         m_sh_basis_vertex_0{ sh_basis_vertex_0 },
         m_sh_basis_vertex_1{ sh_basis_vertex_1 },
         m_sh_basis_vertex_2{ sh_basis_vertex_2 },
@@ -787,7 +432,6 @@ private:
     const Vector3d m_source_color;
     const Vector3d m_vertexWeights;
     const Vector<double, 9> m_sh_basis_vertex_0, m_sh_basis_vertex_1, m_sh_basis_vertex_2, m_sh_red_coefficients, m_sh_green_coefficients, m_sh_blue_coefficients;
-    const FaceModel* m_faceModel;
     const double m_weight;
 };
 
@@ -865,17 +509,18 @@ private:
         VectorXd& gamma, VectorXd& shape, VectorXd& color, VectorXd& sh_red_coefficients, VectorXd& sh_green_coefficients, VectorXd& sh_blue_coefficients, unsigned numLandmarks,
         MatrixXd& source_depth, vector<MatrixXd>& source_color, cv::Mat& point_normal) {
 
+        bool estimate_expression_only = false;
         // Estimate shape, expression and illumination
         for (int i = 0; i < maxIteration; ++i) {
             // Create ceres problem
             ceres::Problem problem;
             // Add energy terms
-            add_landmark_terms(problem, numLandmarks, img, faceModel, face, alpha, gamma, poseIncrement);
+            add_landmark_terms(problem, numLandmarks, img, source_depth, faceModel, face, alpha, gamma, poseIncrement, estimate_expression_only);
             add_regularization_terms(problem, alpha, beta, gamma);
             int intern_iteration = 20;
             if (i > 0) {
                 add_geometry_and_color_terms(problem, render, face, img, faceModel, source_depth, source_color, alpha, gamma, beta, poseIncrement, sh_red_coefficients,
-                    sh_green_coefficients, sh_blue_coefficients, point_normal);
+                    sh_green_coefficients, sh_blue_coefficients, point_normal, estimate_expression_only);
                 intern_iteration = 1;
             }
 
@@ -903,13 +548,19 @@ private:
         face.setColor(estimated_color);
     }
 
-    void add_landmark_terms(ceres::Problem& problem, int numLandmarks, Image& img, FaceModel& faceModel, Face& face, VectorXd& alpha, VectorXd& gamma, PoseIncrement<double>& poseIncrement) {
-        for (unsigned i = 17; i < numLandmarks; i++)
-            problem.AddResidualBlock(
-                new ceres::AutoDiffCostFunction<FeatureSimilarityEnergy, 2, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6>
-                (new FeatureSimilarityEnergy(landmarkWeight, img.getLandmark(i), &faceModel, faceModel.getLandmarkVertexIdx(i), face.getIntrinsics(), img.getWidth(), img.getHeight())),
-                nullptr, alpha.data(), gamma.data(), poseIncrement.getData()
-            );
+    void add_landmark_terms(ceres::Problem& problem, int numLandmarks, Image& img, MatrixXd& source_depth, FaceModel& faceModel, Face& face, 
+        VectorXd& alpha, VectorXd& gamma, PoseIncrement<double>& poseIncrement, bool expression) {
+        for (unsigned i = 0; i < 60; i++) {
+            double depth = source_depth(int(img.getLandmark(i)(1)), int(img.getLandmark(i)(0))) / 255.;
+            if (depth > 0) {
+                problem.AddResidualBlock(
+                    new ceres::AutoDiffCostFunction<FeatureSimilarityEnergy, 3, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6>
+                    (new FeatureSimilarityEnergy(landmarkWeight, img.getLandmark(i), depth, &faceModel, &face, faceModel.getLandmarkVertexIdx(i),
+                        face.getIntrinsics(), img.getWidth(), img.getHeight(), face.get_z_near(), face.get_z_far(), expression)),
+                    nullptr, alpha.data(), gamma.data(), poseIncrement.getData()
+                );
+            }
+        }
     }
 
     void add_regularization_terms(ceres::Problem& problem, VectorXd& alpha, VectorXd& beta, VectorXd& gamma) {
@@ -932,7 +583,7 @@ private:
 
     void add_geometry_and_color_terms(ceres::Problem& problem, Renderer& render, Face& face, Image& img, FaceModel& faceModel, MatrixXd& source_depth,
         vector<MatrixXd>& source_color, VectorXd& alpha, VectorXd& gamma, VectorXd& beta, PoseIncrement<double>& poseIncrement, VectorXd& sh_red_coefficients,
-        VectorXd& sh_green_coefficients, VectorXd& sh_blue_coefficients, cv::Mat& point_normal) {
+        VectorXd& sh_green_coefficients, VectorXd& sh_blue_coefficients, cv::Mat& point_normal, bool estimate_expression_only) {
 
         render.clear_buffers();
 
@@ -951,6 +602,10 @@ private:
         cv::Mat bary_coords = render.get_pixel_bary_coord_buffer();
         cv::Mat pixel_triangle_normal_buffer = render.get_pixel_triangle_normal_buffer();
         cv::Mat rendered_depth_buffer = render.get_depth_buffer();
+
+        cv::imshow("depth", rendered_depth_buffer);
+        cv::imshow("color", color_buffer);
+        cv::waitKey(0);
 
         for (unsigned i = 0; i < img.getHeight(); ++i) {
             for (unsigned j = 0; j < img.getWidth(); ++j) {
@@ -993,8 +648,8 @@ private:
                             problem.AddResidualBlock(
                                 new ceres::AutoDiffCostFunction<GeometryPoint2PlaneConsistencyEnergy, 2, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6>
                                 (new GeometryPoint2PlaneConsistencyEnergy(planeWeight, vertex_indices, vertices_affine_bary_coords,
-                                    source_depth(i, j) / 255., point_normal_source, &faceModel, projection_matrix, double(i) + 0.5, double(j) + 0.5,
-                                    double(img.getWidth()), double(img.getHeight()), face.get_z_near(), face.get_z_far())),
+                                    source_depth(i, j) / 255., point_normal_source, &faceModel, &face, projection_matrix, double(i) + 0.5, double(j) + 0.5,
+                                    double(img.getWidth()), double(img.getHeight()), face.get_z_near(), face.get_z_far(), estimate_expression_only)),
                                 nullptr, alpha.data(), gamma.data(), poseIncrement.getData()
                             );
                         }
@@ -1004,8 +659,8 @@ private:
                     problem.AddResidualBlock(
                         new ceres::AutoDiffCostFunction<GeometryPoint2PointConsistencyEnergy, 3, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6>
                         (new GeometryPoint2PointConsistencyEnergy(pointWeight, indices, perspective_corrected_bary_coord,
-                            source_depth(i, j) / 255., &faceModel, projection_matrix, double(i) + 0.5, double(j) + 0.5,
-                            double(img.getWidth()), double(img.getHeight()), face.get_z_near(), face.get_z_far())),
+                            source_depth(i, j) / 255., &faceModel, &face, projection_matrix, double(i) + 0.5, double(j) + 0.5,
+                            double(img.getWidth()), double(img.getHeight()), face.get_z_near(), face.get_z_far(), estimate_expression_only)),
                         nullptr, alpha.data(), gamma.data(), poseIncrement.getData()
                     );
 
@@ -1033,7 +688,8 @@ private:
 
                     problem.AddResidualBlock(
                         new ceres::AutoDiffCostFunction<ColorConsistencyEnergy, 3, BFM_BETA_SIZE, 9, 9, 9>
-                        (new ColorConsistencyEnergy(colorWeight, source_color_, indices, perspective_corrected_bary_coord, &faceModel, sh_basis_vertex_0, sh_basis_vertex_1, sh_basis_vertex_2)),
+                        (new ColorConsistencyEnergy(colorWeight, source_color_, indices, perspective_corrected_bary_coord, &faceModel, &face, sh_basis_vertex_0, 
+                            sh_basis_vertex_1, sh_basis_vertex_2, estimate_expression_only)),
                         nullptr, beta.data(), sh_red_coefficients.data(), sh_green_coefficients.data(), sh_blue_coefficients.data()
                     );
                 }
@@ -1093,7 +749,7 @@ private:
 
                     problem.AddResidualBlock(
                         new ceres::AutoDiffCostFunction<TextureColorConsistencyEnergy, 3, 3, 3, 3>
-                        (new TextureColorConsistencyEnergy(colorWeight, source_color_, perspective_corrected_bary_coords, &faceModel, sh_basis_vertex_0, sh_basis_vertex_1, sh_basis_vertex_2,
+                        (new TextureColorConsistencyEnergy(colorWeight, source_color_, perspective_corrected_bary_coords, sh_basis_vertex_0, sh_basis_vertex_1, sh_basis_vertex_2,
                             face.getSHRedCoefficients(), face.getSHGreenCoefficients(), face.getSHBlueCoefficients())),
                         nullptr, &color.data()[indices(0) * 3], &color.data()[indices(1) * 3], &color.data()[indices(2) * 3]
                     );
