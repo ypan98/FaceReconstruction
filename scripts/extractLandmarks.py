@@ -14,7 +14,7 @@ IS_IMG = True
 SHOW_LM = False
 
 
-sampleName = "sampleHighRes"
+sampleName = "sample5"
 itemPath = "../data/samples/rgb/" + sampleName + ".jpeg"
 landmarkOutputPath = "../data/samples/landmark/" + sampleName + ".txt"
 
