@@ -353,6 +353,11 @@ public:
             vertex_0_color(i) *= irradiance_vertex_0[i] / pi;
             vertex_1_color(i) *= irradiance_vertex_1[i] / pi;
             vertex_2_color(i) *= irradiance_vertex_2[i] / pi;
+
+            vertex_0_color(i) = min(max(vertex_0_color(i), T(0)), T(1));
+            vertex_1_color(i) = min(max(vertex_1_color(i), T(0)), T(1));
+            vertex_2_color(i) = min(max(vertex_2_color(i), T(0)), T(1));
+
             residuals[i] = (T(m_source_color[i])/T(255) - ((vertex_0_color(i) * T(m_vertexWeights(0)) + vertex_1_color(i) * T(m_vertexWeights(1)) + vertex_2_color(i) * T(m_vertexWeights(2))))) * m_weight;
         }
         return true;
@@ -366,73 +371,6 @@ private:
     const Face* m_face;
     const double m_weight;
     const bool m_expression;
-};
-
-class TextureColorConsistencyEnergy {
-public:
-    TextureColorConsistencyEnergy(const double& weight, const Vector3d& source_color, const Vector3d& vertexWeights,
-        const Vector<double, 9>& sh_basis_vertex_0, const Vector<double, 9>& sh_basis_vertex_1, const Vector<double, 9>& sh_basis_vertex_2,
-        const Vector<double, 9>& sh_red_coefficients, const Vector<double, 9>& sh_green_coefficients, const Vector<double, 9>& sh_blue_coefficients) :
-        //initialization
-        m_weight{ weight },
-        m_source_color{ source_color },
-        m_vertexWeights{ vertexWeights },
-        m_sh_basis_vertex_0{ sh_basis_vertex_0 },
-        m_sh_basis_vertex_1{ sh_basis_vertex_1 },
-        m_sh_basis_vertex_2{ sh_basis_vertex_2 },
-        m_sh_red_coefficients{ sh_red_coefficients },
-        m_sh_green_coefficients{ sh_green_coefficients },
-        m_sh_blue_coefficients{ sh_blue_coefficients }
-    { }
-
-    template <typename T>
-    bool operator()(const T* const vertex_color_0, const T* const vertex_color_1, const T* const vertex_color_2, T* residuals) const {
-        T pi = T(3.1415926);
-
-        T irradiance_vertex_0[3] = { T(0), T(0), T(0) };
-        T irradiance_vertex_1[3] = { T(0), T(0), T(0) };
-        T irradiance_vertex_2[3] = { T(0), T(0), T(0) };
-
-        for (int j = 0; j < 9; ++j) {
-            irradiance_vertex_0[0] += T(m_sh_basis_vertex_0(j)) * m_sh_red_coefficients(j, 0);
-            irradiance_vertex_1[0] += T(m_sh_basis_vertex_1(j)) * m_sh_red_coefficients(j, 0);
-            irradiance_vertex_2[0] += T(m_sh_basis_vertex_2(j)) * m_sh_red_coefficients(j, 0);
-        }
-
-        for (int j = 0; j < 9; ++j) {
-            irradiance_vertex_0[1] += T(m_sh_basis_vertex_0(j)) * m_sh_green_coefficients(j, 0);
-            irradiance_vertex_1[1] += T(m_sh_basis_vertex_1(j)) * m_sh_green_coefficients(j, 0);
-            irradiance_vertex_2[1] += T(m_sh_basis_vertex_2(j)) * m_sh_green_coefficients(j, 0);
-        }
-
-        for (int j = 0; j < 9; ++j) {
-            irradiance_vertex_0[2] += T(m_sh_basis_vertex_0(j)) * m_sh_blue_coefficients(j, 0);
-            irradiance_vertex_1[2] += T(m_sh_basis_vertex_1(j)) * m_sh_blue_coefficients(j, 0);
-            irradiance_vertex_2[2] += T(m_sh_basis_vertex_2(j)) * m_sh_blue_coefficients(j, 0);
-        }
-
-        T vertex_color_0_[3] = { T(0), T(0), T(0) };
-        T vertex_color_1_[3] = { T(0), T(0), T(0) };
-        T vertex_color_2_[3] = { T(0), T(0), T(0) };
-
-        for (int i = 0; i < 3; ++i) {
-            vertex_color_0_[i] = vertex_color_0[i] * irradiance_vertex_0[i] / pi;
-            vertex_color_1_[i] = vertex_color_1[i] * irradiance_vertex_1[i] / pi;
-            vertex_color_2_[i] = vertex_color_2[i] * irradiance_vertex_2[i] / pi;
-
-            vertex_color_0_[i] = max(vertex_color_0_[i], T(0));
-            vertex_color_1_[i] = max(vertex_color_1_[i], T(0));
-            vertex_color_2_[i] = max(vertex_color_2_[i], T(0));
-
-            residuals[i] = (T(m_source_color(i)) - (vertex_color_0_[i] * T(m_vertexWeights(0)) + vertex_color_1_[i] * T(m_vertexWeights(1)) + vertex_color_2_[i] * T(m_vertexWeights(2))) * T(255.)) * m_weight;
-        }
-        return true;
-    }
-private:
-    const Vector3d m_source_color;
-    const Vector3d m_vertexWeights;
-    const Vector<double, 9> m_sh_basis_vertex_0, m_sh_basis_vertex_1, m_sh_basis_vertex_2, m_sh_red_coefficients, m_sh_green_coefficients, m_sh_blue_coefficients;
-    const double m_weight;
 };
 
 class RegularizationEnergy {
@@ -456,7 +394,7 @@ class Optimizer {
 
 public:
     // maybe add some options later when we are done with the basic version. Like GN/LM, Cuda/Cpu....
-    Optimizer(double _landmakrWeight = 0.35, double _pointWeight = 1.14, double _planeWeight = 3.34, double _colorWeight = 4.47, double _shapeRegWeight = 0.05, double _expRegWeight = 0.05, double _coloRegWeight = 0.05, int _maxIteration = 7) {
+    Optimizer(double _landmakrWeight = 0.35, double _pointWeight = 1.14, double _planeWeight = 3.34, double _colorWeight = 4.47, double _shapeRegWeight = 0.05, double _expRegWeight = 0.05, double _coloRegWeight = 0.05, int _maxIteration = 3) {
         landmarkWeight = _landmakrWeight;
         pointWeight = _pointWeight;
         planeWeight = _planeWeight;
@@ -542,15 +480,13 @@ private:
 
         // Estimate texture from estimated shape, expression, color and illumination
         VectorXd estimated_color = face.getColor();
-        ceres::Problem problem;
-        add_texture_terms(problem, render, face, img, faceModel, source_depth, source_color, estimated_color);
-        solve(problem, 20, ceres::ITERATIVE_SCHUR);
+        optimize_texture(render, face, img, faceModel, source_depth, source_color, estimated_color);
         face.setColor(estimated_color);
     }
 
     void add_landmark_terms(ceres::Problem& problem, int numLandmarks, Image& img, MatrixXd& source_depth, FaceModel& faceModel, Face& face, 
         VectorXd& alpha, VectorXd& gamma, PoseIncrement<double>& poseIncrement, bool expression) {
-        for (unsigned i = 0; i < 60; i++) {
+        for (unsigned i = 0; i < numLandmarks; i++) {
             double depth = source_depth(int(img.getLandmark(i)(1)), int(img.getLandmark(i)(0))) / 255.;
             if (depth > 0) {
                 problem.AddResidualBlock(
@@ -697,15 +633,14 @@ private:
         }
     }
 
-    void add_texture_terms(ceres::Problem& problem, Renderer& render, Face& face, Image& img, FaceModel& faceModel, MatrixXd& source_depth,
+    void optimize_texture(Renderer& render, Face& face, Image& img, FaceModel& faceModel, MatrixXd& source_depth,
         vector<MatrixXd>& source_color, VectorXd& color) {
-
         render.clear_buffers();
 
         Matrix4f mvp_matrix = face.getFullProjectionMatrix().cast<float>().transpose();
         Matrix4f mv_matrix = face.getExtrinsics().cast<float>().transpose();
-        VectorXf vertices = face.calculateVerticesDefault().cast<float>();
-        VectorXf colors = face.calculateColorsDefault().cast<float>();
+        VectorXf vertices = face.getShape().cast<float>();
+        VectorXf colors = face.getColor().cast<float>();
         VectorXf sh_red_coefficients_ = face.getSHRedCoefficients().cast<float>();
         VectorXf sh_green_coefficients_ = face.getSHGreenCoefficients().cast<float>();
         VectorXf sh_blue_coefficients_ = face.getSHBlueCoefficients().cast<float>();
@@ -716,43 +651,53 @@ private:
         cv::Mat bary_coords = render.get_pixel_bary_coord_buffer();
         cv::Mat pixel_triangle_normal_buffer = render.get_pixel_triangle_normal_buffer();
         cv::Mat depth_buffer = render.get_depth_buffer();
+
+        double pi = 3.1415926;
+        int height = img.getHeight();
+        int width = img.getWidth();
+        mvp_matrix.transposeInPlace();
         for (unsigned i = 0; i < img.getHeight(); ++i) {
             for (unsigned j = 0; j < img.getWidth(); ++j) {
                 float depth = depth_buffer.at<float>(i, j);
                 if (!(depth == 0)) {
-                    // Add texture color term
                     Vector3i indices = faceModel.getTriangulationByRow(indices_buffer.at<int>(i, j));
 
-                    Vector3d perspective_corrected_bary_coords;
-                    perspective_corrected_bary_coords << bary_coords.at<cv::Vec6d>(i, j)[3], bary_coords.at<cv::Vec6d>(i, j)[4], bary_coords.at<cv::Vec6d>(i, j)[5];
-
-                    Vector3d source_color_;
-                    source_color_ << double(source_color[0](i, j)), double(source_color[1](i, j)), double(source_color[2](i, j));
-
                     cv::Vec<float, 9> triangle_vertex_normals = pixel_triangle_normal_buffer.at<cv::Vec<float, 9>>(i, j);
-                    Vector3d normal_vertex_0, normal_vertex_1, normal_vertex_2;
-                    normal_vertex_0 << double(triangle_vertex_normals[0]), double(triangle_vertex_normals[1]), double(triangle_vertex_normals[2]);
-                    normal_vertex_1 << double(triangle_vertex_normals[3]), double(triangle_vertex_normals[4]), double(triangle_vertex_normals[5]);
-                    normal_vertex_2 << double(triangle_vertex_normals[6]), double(triangle_vertex_normals[7]), double(triangle_vertex_normals[8]);
+                    for (int z = 0; z < 3; ++z) {
+                        Vector4f vertex;
+                        vertex.block(0, 0, 3, 1) = face.getShapeBlock(3 * indices(z), 3).cast<float>();
+                        vertex(3) = 1.0;
 
-                    normal_vertex_0.normalize();
-                    normal_vertex_1.normalize();
-                    normal_vertex_2.normalize();
+                        // Apply perspective projection
+                        vertex = mvp_matrix * vertex;
 
-                    Vector<double, 9> sh_basis_vertex_0, sh_basis_vertex_1, sh_basis_vertex_2;
+                        // To clip space
+                        vertex = vertex / vertex(3);
 
-                    for (int i = 0; i < 9; ++i) {
-                        sh_basis_vertex_0(i) = SH_basis_function(normal_vertex_0, i);
-                        sh_basis_vertex_1(i) = SH_basis_function(normal_vertex_1, i);
-                        sh_basis_vertex_2(i) = SH_basis_function(normal_vertex_2, i);
+                        // To pixel space
+                        vertex(0) = (vertex(0) + 1.) * (width / 2.);
+                        vertex(1) = height - (vertex(1) + 1.) * (height / 2);
+                        Vector3d normal;
+                        normal << double(triangle_vertex_normals[z * 3]), double(triangle_vertex_normals[z * 3 + 1]), double(triangle_vertex_normals[z * 3 + 2]);
+                        normal.normalize();
+
+                        Vector<float, 9> sh_basis;
+                        for (int k = 0; k < 9; ++k) {
+                            sh_basis(k) = SH_basis_function(normal, k);
+                        }
+
+                        double irradiance[3] = { 0, 0, 0 };
+
+                        for (int k = 0; k < 9; ++k) {
+                            irradiance[0] += sh_basis(k) * sh_red_coefficients_(k);
+                            irradiance[1] += sh_basis(k) * sh_green_coefficients_(k);
+                            irradiance[2] += sh_basis(k) * sh_blue_coefficients_(k);
+                        }
+
+                        color.data()[indices(z) * 3] = (source_color[0](int(vertex(1)), int(vertex(0))) * pi) / (irradiance[0] * 255.);
+                        color.data()[indices(z) * 3 + 1] = (source_color[1](int(vertex(1)), int(vertex(0))) * pi) / (irradiance[1] * 255.);
+                        color.data()[indices(z) * 3 + 2] = (source_color[2](int(vertex(1)), int(vertex(0))) * pi) / (irradiance[2] * 255.);
                     }
-
-                    problem.AddResidualBlock(
-                        new ceres::AutoDiffCostFunction<TextureColorConsistencyEnergy, 3, 3, 3, 3>
-                        (new TextureColorConsistencyEnergy(colorWeight, source_color_, perspective_corrected_bary_coords, sh_basis_vertex_0, sh_basis_vertex_1, sh_basis_vertex_2,
-                            face.getSHRedCoefficients(), face.getSHGreenCoefficients(), face.getSHBlueCoefficients())),
-                        nullptr, &color.data()[indices(0) * 3], &color.data()[indices(1) * 3], &color.data()[indices(2) * 3]
-                    );
                 }
             }
         }

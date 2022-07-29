@@ -186,7 +186,7 @@ public:
 				if (mesh.colors(i, j) < 0.)
 					outFile << double(0);
 				else if (mesh.colors(i, j) > 1.)
-					outFile << double(1);
+					outFile << double(0.99);
 				else
 					outFile << mesh.colors(i, j);
 				outFile << " ";
