@@ -32,11 +32,11 @@ void handleMenu() {
 
 void performTask() {
 	Optimizer optimizer;
+	auto render = Renderer::Get();
 	switch (taskOption) {
 	case 1:
 	{
 		// reconstruct face
-		auto render = Renderer::Get();
 		Face sourceFace = Face("sample1", "BFM17");
 		render.initialiaze_rendering_context(sourceFace.getFaceModel(), sourceFace.getImage().getHeight(), sourceFace.getImage().getWidth());
 		sourceFace.setIntrinsics(double(60), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
@@ -66,9 +66,15 @@ void performTask() {
 	{
 		// reconstruct source face
 		Face sourceFace = Face("sample1", "BFM17");
+		render.initialiaze_rendering_context(sourceFace.getFaceModel(), sourceFace.getImage().getHeight(), sourceFace.getImage().getWidth());
+		sourceFace.setIntrinsics(double(60), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
+			double(8800), double(9000));
 		optimizer.optimize(sourceFace, 0);
 		// reconstruct target face
 		Face targetFace = Face("sample2", "BFM17");
+		render.initialiaze_rendering_context(sourceFace.getFaceModel(), sourceFace.getImage().getHeight(), sourceFace.getImage().getWidth());
+		targetFace.setIntrinsics(double(60), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
+			double(8800), double(9000));
 		optimizer.optimize(targetFace, 0);
 		// transfer expression and write out mesh
 		targetFace.transferExpression(sourceFace);
