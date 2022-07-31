@@ -1,13 +1,12 @@
 #include "Renderer.h"
 
-
+// vertex type definition
 struct __align__(16) ModelVertex
 {
 	float4 position;
 	float4 color;
 };
-
-// Type definitions
+// triangle type definition
 struct __align__(16) TriangleToRasterize
 {
 	ModelVertex v0, v1, v2;
@@ -24,7 +23,7 @@ struct __align__(16) TriangleToRasterize
 	unsigned char should_draw;
 };
 
-// Auxiliary functions
+// apply projection transform to the vertex: camera (eye) space -> clip space
 __device__ inline float4 projection(float* projection_matrix, float4& vertex) {
 	float projected_x = projection_matrix[0] * vertex.x + projection_matrix[1] * vertex.y + projection_matrix[2] * vertex.z + projection_matrix[3] * vertex.w;
 	float projected_y = projection_matrix[4] * vertex.x + projection_matrix[5] * vertex.y + projection_matrix[6] * vertex.z + projection_matrix[7] * vertex.w;
@@ -33,7 +32,7 @@ __device__ inline float4 projection(float* projection_matrix, float4& vertex) {
 	return make_float4(projected_x, projected_y, projected_z, projected_w);
 };
 
-// Main functions
+// determine if a face should be rendered (backface culling) 
 __device__ bool vertices_ccw_in_screen_space(const float4& v0, const float4& v1, const float4& v2)
 {
 	float dx01 = v1.x - v0.x;
@@ -393,6 +392,7 @@ void Renderer::terminate_rendering_context() {
 	}
 }
 
+// Clear malloc'd data in CUDA by zeroing them out
 void Renderer::clear_buffers() {
 	cv::Mat depth = INT_MAX * cv::Mat::ones(viewport_height, viewport_width, CV_32SC1);
 
@@ -409,6 +409,7 @@ void Renderer::clear_buffers() {
 	cudaDeviceSynchronize();
 }
 
+// Create streams, malloc data and initialize them for the rending context
 void Renderer::initialiaze_rendering_context(FaceModel& face_model, int height, int width) {
 	viewport_height = height;
 	viewport_width = width;
@@ -466,6 +467,7 @@ void Renderer::initialiaze_rendering_context(FaceModel& face_model, int height, 
 
 	cudaDeviceSynchronize();
 }
+
 
 void Renderer::render(Matrix4f& mvp_matrix, Matrix4f& mv_matrix, VectorXf& vertices, VectorXf& colors, VectorXf& sh_red_coefficients,
 	VectorXf& sh_green_coefficients, VectorXf& sh_blue_coefficients, float z_near, float z_far) {

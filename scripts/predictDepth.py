@@ -1,7 +1,13 @@
+"""
+use pretrained model to predict depth from a RGB image
+"""
+
 import cv2
 import torch
 import urllib.request
 import matplotlib.pyplot as plt
+
+
 
 filename = "sampleHighRes"
 inputFilename = "../data/samples/rgb/" + filename + ".jpeg"

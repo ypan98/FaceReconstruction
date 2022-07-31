@@ -7,12 +7,10 @@
 
 using namespace std;
 
-vector<string> taskOptions{ "Face reconstruction", "Expression transfer"};
+vector<string> taskOptions{ "Face reconstruction of single image", "Expression transfer of images", "Expression transfer of sequences" };
 int taskOption = -1;
-// For now we only hadle sample images case
-// vector<string> inputOptions{ "Use sample image(s)" };
-// int inputOption = -1;
 
+// Allows user to select an option from predefined task list
 void handleMenu() {
 	cout << "Please select a task:\n";
 	for (int i = 0; i < taskOptions.size(); i++) cout << i + 1 << ". " << taskOptions[i] << endl;
@@ -20,19 +18,15 @@ void handleMenu() {
 		if (taskOption > 0 && taskOption <= taskOptions.size()) break;
 		else cout << "Enter a valid option\n";
 	}
-	/*cout << "Please select an option for the input image(s):\n";
-	for (int i = 0; i < inputOptions.size(); i++) cout << i+1 << ". " << inputOptions[i] << endl;
-	while (cin >> inputOption) {
-		if (inputOption >= 0 && inputOption <= inputOptions.size()) break;
-		else cout << "Enter a valid option\n";
-	}*/
 }
 
+// Perform the selected task
 void performTask() {
 	switch (taskOption) {
+		// Reconstruct face mesh from a sample image
 	case 1:
 	{
-		// reconstruct face
+		// initialize
 		Face sourceFace = Face("sample1", "BFM17");
 		Image img = sourceFace.getImage();
 		Renderer rendererOriginal(sourceFace.getFaceModel(), img.getHeight(), img.getWidth());
@@ -40,7 +34,9 @@ void performTask() {
 		sourceFace.setIntrinsics(double(60), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
 			double(8800), double(9000));
 		Optimizer optimizer(sourceFace);
+		// optimize params
 		optimizer.optimize(0);
+		// render the result
 		Matrix4f mvp_matrix = sourceFace.getFullProjectionMatrix().transpose().cast<float>();
 		Matrix4f mv_matrix = sourceFace.getExtrinsics().transpose().cast<float>();
 		VectorXf vertices = sourceFace.getShape().cast<float>();
@@ -51,11 +47,11 @@ void performTask() {
 		rendererDownsampled.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients, sourceFace.get_z_near(),
 			sourceFace.get_z_far());
 		sourceFace.setColor(rendererDownsampled.get_re_rendered_vertex_color().cast<double>());
-		imshow("face", rendererDownsampled.get_color_buffer());
+		imshow("Reconstructed face", rendererDownsampled.get_color_buffer());
 		cv::waitKey(0);
-
 		// write out mesh
 		sourceFace.writeReconstructedFace();
+		cout << "Resulting mesh is saved in ./data" << endl;
 		break;
 	}
 	case 2:
@@ -77,6 +73,14 @@ void performTask() {
 		//targetFace.writeReconstructedFace();
 		//break;
 	}
+	case 3:
+	{
+
+	}
+	default: {
+		cout << "Invalid task" << endl;
+	}
+
 	}
 }
 
