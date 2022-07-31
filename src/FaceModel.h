@@ -1,21 +1,22 @@
 #pragma once
 #include "DataHandler.h"
 
+// Basis size. ALPHA and GAMMA could be as maximum 199 and BETA 100 for BFM17
 #define BFM_ALPHA_SIZE 100
 #define BFM_BETA_SIZE 100
 #define BFM_GAMMA_SIZE 100
 
-// Class for a face model
+// Class for a face model (BFM17)
 class FaceModel{
-
 public:
 	FaceModel() {
 	}
+	// contructor to ni
 	FaceModel(std::string _faceModel) {
 		faceModelName = _faceModel;
-		DataHandler::readBasis(_faceModel, "shape", shapeBasis);
-		DataHandler::readBasis(_faceModel, "color", colorBasis);
-		DataHandler::readBasis(_faceModel, "expression", expBasis);
+		DataHandler::readBasis(_faceModel, "shape", shapeBasis, BFM_ALPHA_SIZE);
+		DataHandler::readBasis(_faceModel, "color", colorBasis, BFM_BETA_SIZE);
+		DataHandler::readBasis(_faceModel, "expression", expBasis, BFM_GAMMA_SIZE);
 		DataHandler::readMean(_faceModel, "shape", shapeMean);
 		DataHandler::readMean(_faceModel, "color", colorMean);
 		DataHandler::readMean(_faceModel, "expression", expMean);
@@ -24,9 +25,9 @@ public:
 		DataHandler::readVariance(_faceModel, "expression", expVar);
 		DataHandler::readTriangulation(_faceModel, triangulation);
 		DataHandler::readFaceModelLandmarks(_faceModel, landmarks);
-		updateBasisWithStd();
+		updateBasisWithStd();	// basis with std applied
 	}
-
+	// getter and setters
 	std::string getFaceModelName() {
 		return faceModelName;
 	}
@@ -166,8 +167,7 @@ private:
   MatrixX3i triangulation;
   // vector with index of the vertices corresponding to the facial landmarks. Shape = [68, 1]
   VectorXi landmarks;
-
-  // update the basis with its corresponding std and update the stored variables
+  // update the basis with its corresponding std
   void updateBasisWithStd() {
 	  shapeBasis = (shapeVar.cwiseSqrt().asDiagonal() * shapeBasis.transpose()).transpose();
 	  colorBasis = (colorVar.cwiseSqrt().asDiagonal() * colorBasis.transpose()).transpose();

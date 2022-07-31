@@ -6,7 +6,8 @@
 // Class for a reconstructed 3D face
 class Face {
 public:
-	Face(std::string _imageFileName = "sample1", std::string _faceModel = "BFM17", double scaling_factor = 1./400) {
+	// constructor to initialize with the specified image and face model
+	Face(std::string _imageFileName = "sample1", std::string _faceModel = "BFM17") {
 		image = Image(_imageFileName);
 		faceModel = FaceModel(_faceModel);
 		alpha = VectorXd::Zero(faceModel.getAlphaSize());
@@ -17,41 +18,30 @@ public:
 		sh_blue_coefficients = VectorXd::Ones(9);
 		shape = faceModel.getShapeMean();
 		color = faceModel.getColorMean();
-		intrinsics = Matrix4d::Identity();
+		setIntrinsics(double(60), double(image.getWidth()) / double(image.getHeight()),
+			double(8800), double(9000));
 		extrinsics = Matrix4d::Identity();
 		extrinsics(2, 3) = -400;
 	}
-
 	// Calls DataHandler to write the recontructed mesh in .obj format
 	void writeReconstructedFace() {
 		Mesh mesh = toMesh();
 		DataHandler::writeMesh(mesh, image.getFileName());
 	}
-	
 	// Transfer the expression from the source face to the current face
 	void transferExpression(const Face& sourceFace) {
 		this->gamma = sourceFace.gamma;
 	}
-
-	unsigned getNumTriangles() const {
-		return faceModel.getTriangulationRows();
-	}
-
-	unsigned getNumVertices() const {
-		return faceModel.getNumVertices();
-	}
-
 	// Randomize parameters (for testing purpose)
 	void randomizeParameters(double scaleAlpha = 1, double scaleBeta = 1, double scaleGamma = 1) {
 		alpha = VectorXd::Random(faceModel.getAlphaSize()) * scaleAlpha;
 		beta = VectorXd::Random(faceModel.getBetaSize()) * scaleBeta;
 		gamma = VectorXd::Random(faceModel.getGammaSize()) * scaleGamma;
 	}
-
 	// construct the mesh with alpha, beta, gamma and face model variables
 	Mesh toMesh() {
 		Mesh mesh;
-		MatrixXd vertices = shape;
+		MatrixXd vertices = shape + faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
 		vertices.resize(3, faceModel.getNumVertices());
 		mesh.vertices = vertices.transpose();
 
@@ -62,9 +52,38 @@ public:
 		mesh.faces = faceModel.getTriangulation();
 		return mesh;
 	}
+	// geometry
+	MatrixX3d calculateVertices() {
+		MatrixXd vertices = faceModel.getShapeMean() + faceModel.getShapeBasis() * alpha +
+			faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
+		vertices.resize(3, faceModel.getNumVertices());
+		return vertices.transpose();
+	}
+	VectorXd calculateVerticesDefault() {
+		return faceModel.getShapeMean() + faceModel.getShapeBasis() * alpha +
+			faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
+	}
+	VectorXd calculateVerticesNeutralExp() {
+		return faceModel.getShapeMean() + faceModel.getShapeBasis() * alpha;
+	}
+
+	// color
+	MatrixX3d calculateColors() {
+		MatrixXd colors = faceModel.getColorMean() + faceModel.getColorBasis() * beta;
+		colors.resize(3, faceModel.getNumVertices());
+		return colors.transpose();
+	}
+	VectorXd calculateColorsDefault() {
+		return faceModel.getColorMean() + faceModel.getColorBasis() * beta;
+	}
 
 	// getters and setters
-
+	unsigned getNumTriangles() const {
+		return faceModel.getTriangulationRows();
+	}
+	unsigned getNumVertices() const {
+		return faceModel.getNumVertices();
+	}
 	void setAlpha(VectorXd _alpha) {
 		alpha = _alpha;
 	}
@@ -108,7 +127,6 @@ public:
 		perspective_projection_matrix(2, 2) = (z_near_ + z_far_) / (z_near_ - z_far_);
 		perspective_projection_matrix(2, 3) = (2 * z_near_ * z_far_) / (z_near_ - z_far_);
 		perspective_projection_matrix(3, 2) = -1;
-
 		fov = fov_;
 		z_near = z_near_;
 		z_far = z_far_;
@@ -133,26 +151,6 @@ public:
 	FaceModel getFaceModel() {
 		return faceModel;
 	}
-	// geometry
-	MatrixX3d calculateVertices() {
-		MatrixXd vertices = faceModel.getShapeMean() + faceModel.getShapeBasis() * alpha +
-			faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
-		vertices.resize(3, faceModel.getNumVertices());
-		return vertices.transpose();
-	}
-	// color
-	MatrixX3d calculateColors() {
-		MatrixXd colors = faceModel.getColorMean() + faceModel.getColorBasis() * beta;
-		colors.resize(3, faceModel.getNumVertices());
-		return colors.transpose();
-	}
-	VectorXd calculateVerticesDefault() {
-		return faceModel.getShapeMean() + faceModel.getShapeBasis() * alpha +
-			faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
-	}
-	VectorXd calculateColorsDefault() {
-		return faceModel.getColorMean() + faceModel.getColorBasis() * beta;
-	}
 	VectorXd getShapeBlock(unsigned startRow, unsigned numRows) const {
 		return shape.block(startRow, 0, numRows, 1);
 	}
@@ -164,6 +162,9 @@ public:
 	}
 	VectorXd getShape() const {
 		return shape;
+	}
+	VectorXd getShapeWithExpression() const {
+		return shape + faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
 	}
 	void setColor(VectorXd color_) {
 		color = color_;
@@ -180,9 +181,9 @@ public:
 private:
 	VectorXd alpha, beta, gamma, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients;	// parameters to optimize
 	VectorXd shape, color;
-	Matrix4d intrinsics;	// given by camera manufacturer, otherwise hardcode it?
-	Matrix4d extrinsics;	// given by optimization
+	Matrix4d intrinsics;	// given by camera manufacture
+	Matrix4d extrinsics;	// given by landamark fitting
 	Image image;	// the corresponding image
 	FaceModel faceModel;	// the used face model, ie BFM17
-	double fov, z_near, z_far;
+	double fov, z_near, z_far;	// rasterization params
 };

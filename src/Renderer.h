@@ -25,6 +25,10 @@ public:
 
 	void clear_buffers();
 
+	void render(Matrix4f& mvp_matrix, Matrix4f& mv_matrix, VectorXf& vertices, VectorXf& colors, VectorXf& sh_red_coefficients,
+		VectorXf& sh_green_coefficients, VectorXf& sh_blue_coefficients, float z_near, float z_far);
+
+	// getters and setters
 	cv::Mat get_color_buffer() {
 		return color_img;
 	}
@@ -48,9 +52,6 @@ public:
 	VectorXf get_re_rendered_vertex_color() {
 		return re_rendered_vertex_color;
 	}
-
-	void render(Matrix4f& mvp_matrix, Matrix4f& mv_matrix, VectorXf& vertices, VectorXf& colors, VectorXf& sh_red_coefficients,
-		VectorXf& sh_green_coefficients, VectorXf& sh_blue_coefficients, float z_near, float z_far);
 
 private:
 	// Face model assigned to this render

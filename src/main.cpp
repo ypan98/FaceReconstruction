@@ -4,7 +4,6 @@
 #include "Renderer.h"
 #include <chrono>
 #include <omp.h>
-
 using namespace std;
 
 vector<string> taskOptions{ "Face reconstruction of single image", "Expression transfer of images", "Expression transfer of sequences" };
@@ -24,63 +23,80 @@ void handleMenu() {
 void performTask() {
 	switch (taskOption) {
 		// Reconstruct face mesh from a sample image
-	case 1:
-	{
-		// initialize
-		Face sourceFace = Face("sample1", "BFM17");
-		Image img = sourceFace.getImage();
-		Renderer rendererOriginal(sourceFace.getFaceModel(), img.getHeight(), img.getWidth());
-		Renderer rendererDownsampled(sourceFace.getFaceModel(), img.getHeightDown(), img.getWidthDown());
-		sourceFace.setIntrinsics(double(60), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
-			double(8800), double(9000));
-		Optimizer optimizer(sourceFace);
-		// optimize params
-		optimizer.optimize(0);
-		// render the result
-		Matrix4f mvp_matrix = sourceFace.getFullProjectionMatrix().transpose().cast<float>();
-		Matrix4f mv_matrix = sourceFace.getExtrinsics().transpose().cast<float>();
-		VectorXf vertices = sourceFace.getShape().cast<float>();
-		VectorXf colors = sourceFace.getColor().cast<float>();
-		VectorXf sh_red_coefficients = sourceFace.getSHRedCoefficients().cast<float>();
-		VectorXf sh_green_coefficients = sourceFace.getSHGreenCoefficients().cast<float>();
-		VectorXf sh_blue_coefficients = sourceFace.getSHBlueCoefficients().cast<float>();
-		rendererDownsampled.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients, sourceFace.get_z_near(),
-			sourceFace.get_z_far());
-		sourceFace.setColor(rendererDownsampled.get_re_rendered_vertex_color().cast<double>());
-		imshow("Reconstructed face", rendererDownsampled.get_color_buffer());
-		cv::waitKey(0);
-		// write out mesh
-		sourceFace.writeReconstructedFace();
-		cout << "Resulting mesh is saved in ./data" << endl;
-		break;
-	}
-	case 2:
-	{
-		// reconstruct source face
-		//Face sourceFace = Face("sample1", "BFM17");
-		//render.initialiaze_rendering_context(sourceFace.getFaceModel(), sourceFace.getImage().getHeight(), sourceFace.getImage().getWidth());
-		//sourceFace.setIntrinsics(double(60), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
-		//	double(8800), double(9000));
-		//optimizer.optimize(sourceFace, 0);
-		//// reconstruct target face
-		//Face targetFace = Face("sample2", "BFM17");
-		//render.initialiaze_rendering_context(sourceFace.getFaceModel(), sourceFace.getImage().getHeight(), sourceFace.getImage().getWidth());
-		//targetFace.setIntrinsics(double(60), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
-		//	double(8800), double(9000));
-		//optimizer.optimize(targetFace, 0);
-		//// transfer expression and write out mesh
-		//targetFace.transferExpression(sourceFace);
-		//targetFace.writeReconstructedFace();
-		//break;
-	}
-	case 3:
-	{
-
-	}
-	default: {
-		cout << "Invalid task" << endl;
-	}
-
+		case 1:
+		{
+			// initialize
+			Face sourceFace = Face("sample3", "BFM17");
+			Image img = sourceFace.getImage();
+			Renderer rendererDownsampled(sourceFace.getFaceModel(), img.getHeightDown(), img.getWidthDown());
+			Optimizer optimizer(sourceFace);
+			// optimize params
+			optimizer.optimize(false, false);
+			// render the result
+			Matrix4f mvp_matrix = sourceFace.getFullProjectionMatrix().transpose().cast<float>();
+			Matrix4f mv_matrix = sourceFace.getExtrinsics().transpose().cast<float>();
+			VectorXf vertices = sourceFace.getShapeWithExpression().cast<float>();
+			VectorXf colors = sourceFace.getColor().cast<float>();
+			VectorXf sh_red_coefficients = sourceFace.getSHRedCoefficients().cast<float>();
+			VectorXf sh_green_coefficients = sourceFace.getSHGreenCoefficients().cast<float>();
+			VectorXf sh_blue_coefficients = sourceFace.getSHBlueCoefficients().cast<float>();
+			rendererDownsampled.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients, sourceFace.get_z_near(),
+				sourceFace.get_z_far());
+			sourceFace.setColor(rendererDownsampled.get_re_rendered_vertex_color().cast<double>());
+			imshow("Reconstructed face", rendererDownsampled.get_color_buffer());
+			cv::waitKey(0);
+			// write out mesh
+			sourceFace.writeReconstructedFace();
+			cout << "Resulting mesh is saved in /data/outputMesh/" << endl;
+			break;
+		}
+		// Face reconstruction of two images and transfer the expression from source to target face 
+		case 2:
+		{
+			// source face fitting
+			Face sourceFace = Face("sample1", "BFM17");
+			Image img = sourceFace.getImage();
+			Optimizer optimizer(sourceFace);
+			optimizer.optimize(false, false);
+			// target face fitting
+			Face targetFace = Face("sample2", "BFM17");
+			Image img2 = targetFace.getImage();
+			Optimizer optimizer2(targetFace);
+			optimizer2.optimize(false, false);
+			// transfer expression
+			 targetFace.transferExpression(sourceFace);
+			// render the result
+			Matrix4f mvp_matrix = targetFace.getFullProjectionMatrix().transpose().cast<float>();
+			Matrix4f mv_matrix = targetFace.getExtrinsics().transpose().cast<float>();
+			VectorXf vertices = targetFace.getShapeWithExpression().cast<float>();
+			VectorXf vertices2 = targetFace.getShape().cast<float>();
+			VectorXf colors = targetFace.getColor().cast<float>();
+			VectorXf sh_red_coefficients = targetFace.getSHRedCoefficients().cast<float>();
+			VectorXf sh_green_coefficients = targetFace.getSHGreenCoefficients().cast<float>();
+			VectorXf sh_blue_coefficients = targetFace.getSHBlueCoefficients().cast<float>();
+			Renderer rendererDownsampled(targetFace.getFaceModel(), img2.getHeightDown(), img2.getWidthDown());
+			Renderer rendererDownsampled2(targetFace.getFaceModel(), img.getHeightDown(), img.getWidthDown());
+			rendererDownsampled.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients, targetFace.get_z_near(),
+				targetFace.get_z_far());
+			rendererDownsampled2.render(mvp_matrix, mv_matrix, vertices2, colors, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients, sourceFace.get_z_near(),
+				sourceFace.get_z_far());
+			targetFace.setColor(rendererDownsampled.get_re_rendered_vertex_color().cast<double>());
+			imshow("Expression transferred target face", rendererDownsampled.get_color_buffer());
+			imshow("Neutral shape", rendererDownsampled2.get_color_buffer());
+			cv::waitKey(0);
+			// write out mesh
+			targetFace.writeReconstructedFace();
+			cout << "Resulting mesh is saved in /data/outputMesh/" << endl;
+			break;
+		}
+		case 3:
+		{
+			break;
+		}
+		default: {
+			cout << "Invalid task" << endl;
+			break;
+		}
 	}
 }
 

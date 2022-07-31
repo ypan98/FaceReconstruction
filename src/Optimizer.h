@@ -38,10 +38,11 @@ double SH_basis_function(Vector3d& normal, int basis_index) {
 };
 
 //--------------------------------------------------Energy Terms Used for Neutral Face Reconstruction From Single Image--------------------------------------------------//
+
 /*
-* Feature Similarity (Landmarks) energy optimization.
-* Truly denser problem: every residual depends on every parameter alpha, beta, extrinsic and intrinsic. => No big difference defining a residual block per point or
-* the whole as a big block. By means of code consistency we still do it by point.
+* Feature Similarity (Landmarks) energy optimization. Landmarks of the image are precalculated with a deep learning model in python and stored in a file, and BFM17 
+* landmarks are given by the model.
+* This energy term aims to aliniate the landmark points
 */
 class FeatureSimilarityEnergy {
 public:
@@ -106,7 +107,11 @@ private:
     Matrix4d perspective_matrix;
     const bool expression;
 };
-
+/*
+* Geometry point 2 point energy optimization. Tries to minimize the L2 distance between the projected vertices (face and baricentric coordinate calculated from rasterization step)
+* with the points from the image's depth map.
+* If expression = true, then only gamma (expression) is optimized.
+*/  
 class GeometryPoint2PointConsistencyEnergy {
 public:
     GeometryPoint2PointConsistencyEnergy(const double& _pointWeight, const Vector3i& _vertex_indices, const Vector3d& _bary_coord, const double& _depth_source, 
@@ -186,7 +191,11 @@ private:
     const Matrix4d perspective_matrix;
     const bool expression;
 };
-
+/*
+* Geometry point 2 plane energy optimization. Tries to minimize the L2 distance between the projected vertices (face and baricentric coordinate calculated from rasterization step)
+* with the tangent plane from the points of the image's depth map, and viceversa (this is why we have 2 residuals).
+* If expression = true, then only gamma (expression) is optimized.
+*/
 class GeometryPoint2PlaneConsistencyEnergy {
 public:
     GeometryPoint2PlaneConsistencyEnergy(const double& _planeWeight, const Vector<int, 15>& _vertex_indices, const Vector<double, 15>& _bary_coords, const double& _depth_source, 
@@ -284,7 +293,11 @@ private:
     const Matrix4d perspective_matrix;
     const bool expression;
 };
-
+/*
+* Color consistency energy optimization. Tries to minimize the difference between the projected vertices' color (face and baricentric coordinate calculated from rasterization step)
+* with the colors from the input rgb image. Illumination from spherical harmonics coefficients are taken into account.
+* If expression = true, then only illumination (spherical harmonics parameters) are optimized. As changing expression doesnt change base color.
+*/
 class ColorConsistencyEnergy {
 public:
     ColorConsistencyEnergy(const double& weight, const Vector3d& source_color, const Vector3i& vertexIndices, const Vector3d& vertexWeights, const FaceModel* faceModel,
@@ -372,7 +385,9 @@ private:
     const double m_weight;
     const bool m_expression;
 };
-
+/*
+* Parameter regularization energy term. Tries to keep the parameters (coefficients) color to the prior (mean). That is closing the values to zero
+*/
 class RegularizationEnergy {
 public:
     RegularizationEnergy(const double _weight, const unsigned& _size) : weight(_weight), size(_size) {}
@@ -388,11 +403,10 @@ private:
 };
 //-----------------------------------------------------------Energy Terms Used In Both Cases-------------------------------------------------------------//
 
-
 class Optimizer {
 
 public:
-    // maybe add some options later when we are done with the basic version. Like GN/LM, Cuda/Cpu....
+    // constructor with optimizer options and energy term weights
     Optimizer(Face& _sourceFace, bool _downsample = true, double _landmakrWeight = 0.35, double _pointWeight = 1.14, double _planeWeight = 3.34, double _colorWeight = 4.47, 
         double _shapeRegWeight = 0.05, double _expRegWeight = 0.05, double _coloRegWeight = 0.05, int _maxIteration = 3):sourceFace(_sourceFace) {
         downsample = _downsample;
@@ -413,14 +427,13 @@ public:
         rendererDownsampled = Renderer(sourceFace.getFaceModel(), img.getHeightDown(), img.getWidthDown());
     }
 
-    void optimize(int option) {
+    // optimize for the face parameters
+    void optimize(bool estimate_expression_only = false, bool show_intermediate_results = true) {
         Image img = sourceFace.getImage();
-
         // Extrinsic setting
         double poseArr[6];
         PoseIncrement<double>::extrinsicsMatTo6DoG(sourceFace.getExtrinsics(), poseArr);
         PoseIncrement poseIncrement = PoseIncrement<double>(poseArr);
-
         // Face parameter weights
         FaceModel faceModel = sourceFace.getFaceModel();
         VectorXd alpha = sourceFace.getAlpha();
@@ -431,9 +444,7 @@ public:
         VectorXd sh_red_coefficients = sourceFace.getSHRedCoefficients();
         VectorXd sh_green_coefficients = sourceFace.getSHGreenCoefficients();
         VectorXd sh_blue_coefficients = sourceFace.getSHBlueCoefficients();
-
         unsigned numLandmarks = sourceFace.getFaceModel().getNumLandmarks();
-
         MatrixXd source_depth = img.getDepthMap();
         MatrixXd source_depth_down = img.getDepthMapDown();
         cv::Mat source_point_normal = img.getNormalMap();
@@ -441,29 +452,23 @@ public:
         vector<MatrixXd> source_color = img.getRGB();
         vector<MatrixXd> source_color_down = img.getRGBDown();
 
-        if (option == 0) {
-            reconstruct_face(img, poseIncrement, faceModel, alpha, beta, gamma, shape, color, sh_red_coefficients, sh_green_coefficients,
-                sh_blue_coefficients, numLandmarks, source_depth, source_depth_down, source_color, source_color_down, source_point_normal, 
-                source_point_normal_down);
-        }
-        else {
-            return;
-        }
+        // reconstruct face or only expression and illumination parameters depending on option
+        fit_face(img, poseIncrement, faceModel, alpha, beta, gamma, shape, color, sh_red_coefficients, sh_green_coefficients,
+            sh_blue_coefficients, numLandmarks, source_depth, source_depth_down, source_color, source_color_down, source_point_normal, 
+            source_point_normal_down, estimate_expression_only, show_intermediate_results);
         
     }
 private:
     //--------------------------------------------------Functions for face reconstruction--------------------------------------------------//
-    void reconstruct_face(Image& img, PoseIncrement<double>& poseIncrement, FaceModel& faceModel, VectorXd& alpha, VectorXd& beta,
+
+    void fit_face(Image& img, PoseIncrement<double>& poseIncrement, FaceModel& faceModel, VectorXd& alpha, VectorXd& beta,
         VectorXd& gamma, VectorXd& shape, VectorXd& color, VectorXd& sh_red_coefficients, VectorXd& sh_green_coefficients, VectorXd& sh_blue_coefficients, 
         unsigned numLandmarks, MatrixXd& source_depth, MatrixXd& source_depth_down, vector<MatrixXd>& source_color, vector<MatrixXd>& source_color_down,
-        cv::Mat& source_point_normal, cv::Mat& source_point_normal_down) {
-
-        bool estimate_expression_only = false;
+        cv::Mat& source_point_normal, cv::Mat& source_point_normal_down, bool estimate_expression_only, bool show_intermediate_results) {
         // Estimate shape, expression and illumination
         for (int i = 0; i < maxIteration; ++i) {
             // Create ceres problem
             ceres::Problem problem;
-            
             int intern_iteration = 20;
             // Add energy terms
             if (downsample) {
@@ -471,24 +476,21 @@ private:
                 add_regularization_terms(problem, alpha, beta, gamma);
                 if (i > 0) {
                     add_geometry_and_color_terms(problem, img, faceModel, source_depth_down, source_color_down, alpha, gamma, beta, poseIncrement, sh_red_coefficients,
-                        sh_green_coefficients, sh_blue_coefficients, source_point_normal_down, estimate_expression_only);
+                        sh_green_coefficients, sh_blue_coefficients, source_point_normal_down, estimate_expression_only, show_intermediate_results, i);
                     intern_iteration = 1;
                 }
             }
-
             else {
                 add_landmark_terms(problem, numLandmarks, img, source_depth, faceModel, alpha, gamma, poseIncrement, estimate_expression_only);
                 add_regularization_terms(problem, alpha, beta, gamma);
                 if (i > 0) {
                     add_geometry_and_color_terms(problem, img, faceModel, source_depth, source_color, alpha, gamma, beta, poseIncrement, sh_red_coefficients,
-                        sh_green_coefficients, sh_blue_coefficients, source_point_normal, estimate_expression_only);
+                        sh_green_coefficients, sh_blue_coefficients, source_point_normal, estimate_expression_only, show_intermediate_results, i);
                     intern_iteration = 1;
                 }
             }
-
             // Solve problem
             solve(problem, intern_iteration, ceres::ITERATIVE_SCHUR);
-            
             // UPDATE PARAMS
             sourceFace.setAlpha(alpha);
             sourceFace.setGamma(gamma);
@@ -498,16 +500,18 @@ private:
             sourceFace.setSHGreenCoefficients(sh_green_coefficients);
             sourceFace.setSHBlueCoefficients(sh_blue_coefficients);
         }
-
-        sourceFace.setShape(sourceFace.calculateVerticesDefault());
-        sourceFace.setColor(sourceFace.calculateColorsDefault());
-
-        // Estimate texture from estimated shape, expression, color and illumination
-        VectorXd estimated_color = sourceFace.getColor();
-        optimize_texture(img, faceModel, source_depth, source_color, estimated_color);
-        sourceFace.setColor(estimated_color);
+        // set base color and shape (neutral expression) 
+        if (!estimate_expression_only) {
+            sourceFace.setShape(sourceFace.calculateVerticesNeutralExp());
+            sourceFace.setColor(sourceFace.calculateColorsDefault());
+            // Estimate texture from estimated shape, expression, color and illumination
+            VectorXd estimated_color = sourceFace.getColor();
+            //optimize_texture(img, faceModel, source_depth, source_color, estimated_color);
+            sourceFace.setColor(estimated_color);
+        }
     }
 
+    // add landmakr terms to the problem
     void add_landmark_terms(ceres::Problem& problem, int numLandmarks, Image& img, MatrixXd& source_depth, FaceModel& faceModel,
         VectorXd& alpha, VectorXd& gamma, PoseIncrement<double>& poseIncrement, bool expression) {
         for (unsigned i = 0; i < numLandmarks; i++) {
@@ -537,6 +541,7 @@ private:
         }
     }
 
+    // add regularization terms to the probelm
     void add_regularization_terms(ceres::Problem& problem, VectorXd& alpha, VectorXd& beta, VectorXd& gamma) {
         problem.AddResidualBlock(
             new ceres::AutoDiffCostFunction<RegularizationEnergy, BFM_ALPHA_SIZE, BFM_ALPHA_SIZE>
@@ -555,10 +560,11 @@ private:
         );
     }
 
+    // add geometry and color terms
     void add_geometry_and_color_terms(ceres::Problem& problem, Image& img, FaceModel& faceModel, MatrixXd& source_depth,
         vector<MatrixXd>& source_color, VectorXd& alpha, VectorXd& gamma, VectorXd& beta, PoseIncrement<double>& poseIncrement, 
         VectorXd& sh_red_coefficients, VectorXd& sh_green_coefficients, VectorXd& sh_blue_coefficients, 
-        cv::Mat& point_normal, bool estimate_expression_only) {
+        cv::Mat& point_normal, bool estimate_expression_only, bool show_intermediate_results, int iteration) {
 
         rendererOriginal.clear_buffers();
         rendererDownsampled.clear_buffers();
@@ -596,9 +602,10 @@ private:
             width = img.getWidth();
         }
 
-        cv::imshow("depth", rendered_depth_buffer);
-        cv::imshow("color", color_buffer);
-        cv::waitKey(0);
+        if (show_intermediate_results) {
+            cv::imshow("rendered face model at iteration: " + std::to_string(iteration), color_buffer);
+            cv::waitKey(0);
+        }
 
         for (unsigned i = 0; i < height; ++i) {
             for (unsigned j = 0; j < width; ++j) {
@@ -690,6 +697,7 @@ private:
         }
     }
 
+    // optimize for texture (by backprojecting the colors to the correspoding vertices), without Ceres
     void optimize_texture(Image& img, FaceModel& faceModel, MatrixXd& source_depth,
         vector<MatrixXd>& source_color, VectorXd& color) {
         rendererOriginal.clear_buffers();
@@ -760,7 +768,6 @@ private:
         }
     }
     //--------------------------------------------------Functions for face reconstruction--------------------------------------------------//
-
 
     // --------------------------------------------------General functions--------------------------------------------------//
     void solve(ceres::Problem& problem, int max_iterations, ceres::LinearSolverType solver_type) {

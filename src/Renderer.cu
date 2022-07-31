@@ -23,6 +23,8 @@ struct __align__(16) TriangleToRasterize
 	unsigned char should_draw;
 };
 
+//----------------- INTERNAL (HELPER) FUNCTIONS -----------------
+
 // apply projection transform to the vertex: camera (eye) space -> clip space
 __device__ inline float4 projection(float* projection_matrix, float4& vertex) {
 	float projected_x = projection_matrix[0] * vertex.x + projection_matrix[1] * vertex.y + projection_matrix[2] * vertex.z + projection_matrix[3] * vertex.w;
@@ -43,6 +45,7 @@ __device__ bool vertices_ccw_in_screen_space(const float4& v0, const float4& v1,
 	return (dx01 * dy02 - dy01 * dx02 < 0.0f);
 };
 
+// clip space -> screen (pixel) space
 __device__ float2 clip_to_screen_space(const float2& clip_coords, int screen_width, int screen_height)
 {
 	const float x_ss = (clip_coords.x + 1.0f) * (screen_width / 2.0f);
@@ -50,6 +53,7 @@ __device__ float2 clip_to_screen_space(const float2& clip_coords, int screen_wid
 	return make_float2(x_ss, y_ss);
 };
 
+// returns the bounding box of a face
 __device__ float4 calculate_clipped_bounding_box(float4& v0, float4& v1, float4& v2, int viewport_width, int viewport_height)
 {
 	int minX = fmaxf(fminf(floorf(v0.x), fminf(floorf(v1.x), floorf(v2.x))), 0.0f);
@@ -59,6 +63,7 @@ __device__ float4 calculate_clipped_bounding_box(float4& v0, float4& v1, float4&
 	return make_float4(minX, minY, maxX - minX, maxY - minY);
 };
 
+// spherical harmonics basis
 __device__ float SH_basis_function(float3& normal, int basis_index) {
 	switch (basis_index)
 	{
@@ -85,11 +90,13 @@ __device__ float SH_basis_function(float3& normal, int basis_index) {
 	}
 };
 
+// line from v1 to v2 with x,y as weights at the correspoding axis
 __device__ double implicit_line(float x, float y, const float4& v1, const float4& v2)
 {
 	return ((double)v1.y - (double)v2.y) * (double)x + ((double)v2.x - (double)v1.x) * (double)y + (double)v1.x * (double)v2.y - (double)v2.x * (double)v1.y;
 };
 
+// transform the triangle (v0, v1, v2) to screen space. Check if it should be rendered with backface culling (optional) and if the bounding box is correct
 __device__ TriangleToRasterize process_prospective_tri(ModelVertex v0, ModelVertex v1, ModelVertex v2, int viewport_width, int viewport_height, bool enable_backface_culling,
 	bool& should_render)
 {
@@ -141,6 +148,7 @@ __device__ TriangleToRasterize process_prospective_tri(ModelVertex v0, ModelVert
 	return t;
 };
 
+// compute face normal and update corresponding position in vertex_normal_buffer
 __global__ void compute_vertex_normals(int* indices_buffer, float* model_view_matrix, float* vertex_position_buffer, float* vertex_normal_buffer, int max_triangle_id) {
 	int triangle_index = blockIdx.x * blockDim.x + threadIdx.x;
 	if (triangle_index < max_triangle_id) {
@@ -175,6 +183,7 @@ __global__ void compute_vertex_normals(int* indices_buffer, float* model_view_ma
 
 }
 
+// compute color of a vertex with SH coefficients and update the corresponding 3 consequent positions (RGB) in vertex_color_buffer
 __global__ void compute_vertex_colors(float* vertex_color_buffer, float* vertex_normal_buffer, float* sh_coefficients, int max_vertex_index) {
 	int vertex_index = blockIdx.x * blockDim.x + threadIdx.x;
 	if (vertex_index < max_vertex_index) {
@@ -211,7 +220,7 @@ __global__ void compute_vertex_colors(float* vertex_color_buffer, float* vertex_
 	}
 }
 
-
+// compute the face in screen space, checks if it falls into the frustrum, backface culling, bouding box...
 __global__ void build_triangles(int* indices_buffer, float* vertex_position_buffer, float* vertex_color_buffer,
 	float* projection_matrix, TriangleToRasterize* triangles, int max_triangle_id, int viewport_width, int viewport_height)
 {
@@ -265,6 +274,7 @@ __global__ void build_triangles(int* indices_buffer, float* vertex_position_buff
 	}
 }
 
+// perform rasterization of the triangles, the buffers gets updated (pixel_bary_coord_buffer, color_buffer, depth_to_visualize, pixel_triangle_normals_buffer)
 __global__ void raster_triangle(TriangleToRasterize* triangles, unsigned char* color_buffer, float* vertex_normal_buffer, int* depth_buffer, double* pixel_bary_coord_buffer,
 	int* pixel_triangle_buffer, float* pixel_triangle_normals_buffer, int* indices_buffer, int* depth_locked, float* depth_to_visualize, int width, int max_triangle_id,
 	float z_near, float z_far)
@@ -365,6 +375,9 @@ __global__ void raster_triangle(TriangleToRasterize* triangles, unsigned char* c
 	}
 };
 
+// ----------------- STATIC FUNCTIONS CALLED FROM OUTSIDE -----------------
+
+// free all allocated memory in GPU
 void Renderer::terminate_rendering_context() {
 	// Free face parameter buffers
 	cudaFreeAsync(device_vertices, streams[0]);
@@ -392,7 +405,7 @@ void Renderer::terminate_rendering_context() {
 	}
 }
 
-// Clear malloc'd data in CUDA by zeroing them out
+// clear (set to 0) the buffers
 void Renderer::clear_buffers() {
 	cv::Mat depth = INT_MAX * cv::Mat::ones(viewport_height, viewport_width, CV_32SC1);
 
@@ -409,7 +422,7 @@ void Renderer::clear_buffers() {
 	cudaDeviceSynchronize();
 }
 
-// Create streams, malloc data and initialize them for the rending context
+// create streams, malloc data and initialize them for the rending context
 void Renderer::initialiaze_rendering_context(FaceModel& face_model, int height, int width) {
 	viewport_height = height;
 	viewport_width = width;
@@ -468,7 +481,7 @@ void Renderer::initialiaze_rendering_context(FaceModel& face_model, int height, 
 	cudaDeviceSynchronize();
 }
 
-
+// perform render with the given projection matrix, extrinsics, vertices, colors and sh illumination coefficients
 void Renderer::render(Matrix4f& mvp_matrix, Matrix4f& mv_matrix, VectorXf& vertices, VectorXf& colors, VectorXf& sh_red_coefficients,
 	VectorXf& sh_green_coefficients, VectorXf& sh_blue_coefficients, float z_near, float z_far) {
 	TriangleToRasterize* device_triangles_to_render;
@@ -485,6 +498,9 @@ void Renderer::render(Matrix4f& mvp_matrix, Matrix4f& mv_matrix, VectorXf& verti
 
 	cudaDeviceSynchronize();
 
+	/*cudaDeviceProp deviceProp;
+	cudaGetDeviceProperties(&deviceProp, 0); 
+	int block_size = deviceProp.multiProcessorCount*/
 	int block_size = 256;
 	int grid_size = int(num_triangles / block_size) + 1;
 

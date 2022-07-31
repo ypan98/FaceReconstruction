@@ -1,5 +1,4 @@
 #pragma once
-
 #include <fstream>
 #include "Eigen.h"
 #include <opencv2/opencv.hpp>
@@ -11,15 +10,16 @@
 #define NUM_LANDMARKS 68
 #define LANDMARK_DIM 2
 
-// Full paths
+// full paths 
 const std::string PATH_TO_LANDMARK_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/landmark/");
 const std::string PATH_TO_RGB_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/rgb/");
 const std::string PATH_TO_DEPTH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/depth/");
 const std::string PATH_TO_MESH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/outputMesh/");
-
+// facemodel
 const std::map<std::string, std::string> FACE_MODEL_TO_DIR_MAP = {
 	{ "BFM17", convert_path(get_full_path_to_project_root_dir() + "/data/BFM17.h5")},
 };
+// facemodel predefined landmark
 const std::map<std::string, std::string> FACE_MODEL_TO_LM_DIR_MAP = {
 	{ "BFM17", convert_path(get_full_path_to_project_root_dir() + "/data/BFM17_68_Landmarks.txt")},
 };
@@ -39,11 +39,11 @@ const std::map<std::pair<std::string, std::string>, std::string> H5_PATH_MAP = {
 };
 
 
+// static
 class DataHandler {
 public:
-	// read the precomputed landmarks from the file 
+	// read the precomputed image landmarks from the file 
 	static void loadLandmarks(std::string fileName, MatrixX2d& landmarks) {
-
 		landmarks = MatrixXd(NUM_LANDMARKS, LANDMARK_DIM);
 		std::string pathToFile = PATH_TO_LANDMARK_DIR + fileName + ".txt";
 		std::ifstream f(pathToFile);
@@ -54,7 +54,7 @@ public:
 			}
 		}
 	}
-	// read rgb value of the pixels from the image
+	// read rgb values from the image and also store the downsampled version
 	static void loadRGB(std::string fileName, std::vector<MatrixXd>& rgb, std::vector<MatrixXd>& rgbDown) {
 		std::string pathToFile = PATH_TO_RGB_DIR + fileName + ".jpeg";
 		try
@@ -88,7 +88,7 @@ public:
 			std::cerr << e.what() << std::endl;
 		}
 	}
-	// read the depth map of the image
+	// read the depth map of the image and also store the downsampled version
 	static void loadDepthMap(std::string fileName, MatrixXd& depthMap, MatrixXd& depthMapDown) {
 		std::string pathToFile = PATH_TO_DEPTH_DIR + fileName + ".jpeg";
 		try
@@ -105,9 +105,8 @@ public:
 			std::cerr << e.what() << std::endl;
 		}
 	}
-
 	// read basis from hdf5 file
-	static void readBasis(std::string faceModelName, std::string basisName, MatrixXd& basis) {
+	static void readBasis(std::string faceModelName, std::string basisName, MatrixXd& basis, int numOfBasis) {
 		hid_t h5file = H5Fopen(FACE_MODEL_TO_DIR_MAP.at(faceModelName).c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
 		hid_t h5d = H5Dopen2(h5file, H5_PATH_MAP.at(std::make_pair(basisName, "basis")).c_str(), H5P_DEFAULT);
 		if (h5d < 0) std::cerr << "Error reading basis from: " << faceModelName << std::endl;
@@ -116,7 +115,7 @@ public:
 			MatrixXd basis_ = MatrixXd(shape[1], shape[0]);
 			H5Dread(h5d, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &basis_(0));
 			basis_.transposeInPlace();
-			basis = basis_.block(0, 0, shape[0], 100);
+			basis = basis_.block(0, 0, shape[0], numOfBasis);
 		}
 		H5Dclose(h5d);
 		H5Fclose(h5file);
@@ -169,6 +168,7 @@ public:
 		for (int i = 0; i < NUM_LANDMARKS; i++) f >> landmarks(i);
 		f.close();
 	}
+	// write out the mesh in a .off file format
 	static bool writeMesh(const Mesh& mesh, const std::string& filename) {
 		std::string pathToFile = PATH_TO_MESH_DIR + filename + ".off";
 
@@ -218,7 +218,6 @@ public:
 		}
 		return true;
 	}
-
 };
 	
 
