@@ -394,7 +394,11 @@ class Optimizer {
 
 public:
     // maybe add some options later when we are done with the basic version. Like GN/LM, Cuda/Cpu....
-    Optimizer(double _landmakrWeight = 0.35, double _pointWeight = 1.14, double _planeWeight = 3.34, double _colorWeight = 4.47, double _shapeRegWeight = 0.05, double _expRegWeight = 0.05, double _coloRegWeight = 0.05, int _maxIteration = 3) {
+    Optimizer(Face& _sourceFace, bool _downsample = true, double _landmakrWeight = 0.35, double _pointWeight = 1.14, double _planeWeight = 3.34, double _colorWeight = 4.47, 
+        double _shapeRegWeight = 0.05, double _expRegWeight = 0.05, double _coloRegWeight = 0.05, int _maxIteration = 3):sourceFace(_sourceFace) {
+        downsample = _downsample;
+
+        // Initialize energy weights
         landmarkWeight = _landmakrWeight;
         pointWeight = _pointWeight;
         planeWeight = _planeWeight;
@@ -403,38 +407,45 @@ public:
         expRegWeight = _expRegWeight;
         colorRegWeight = _coloRegWeight;
         maxIteration = _maxIteration;
+
+        // Initialize renderers
+        Image img = sourceFace.getImage();
+        rendererOriginal = Renderer(sourceFace.getFaceModel(), img.getHeight(), img.getWidth());
+        rendererDownsampled = Renderer(sourceFace.getFaceModel(), img.getHeightDown(), img.getWidthDown());
     }
 
-    void optimize(Face& face, int option) {
-        Renderer render = Renderer::Get();
-        Image img = face.getImage();
-        render.initialiaze_rendering_context(face.getFaceModel(), img.getHeight(), img.getWidth());
+    void optimize(int option) {
+        Image img = sourceFace.getImage();
 
         // Extrinsic setting
         double poseArr[6];
-        PoseIncrement<double>::extrinsicsMatTo6DoG(face.getExtrinsics(), poseArr);
+        PoseIncrement<double>::extrinsicsMatTo6DoG(sourceFace.getExtrinsics(), poseArr);
         PoseIncrement poseIncrement = PoseIncrement<double>(poseArr);
 
         // Face parameter weights
-        FaceModel faceModel = face.getFaceModel();
-        VectorXd alpha = face.getAlpha();
-        VectorXd beta = face.getBeta();
-        VectorXd gamma = face.getGamma();
-        VectorXd shape = face.getShape();
-        VectorXd color = face.getColor();
-        VectorXd sh_red_coefficients = face.getSHRedCoefficients();
-        VectorXd sh_green_coefficients = face.getSHGreenCoefficients();
-        VectorXd sh_blue_coefficients = face.getSHBlueCoefficients();
+        FaceModel faceModel = sourceFace.getFaceModel();
+        VectorXd alpha = sourceFace.getAlpha();
+        VectorXd beta = sourceFace.getBeta();
+        VectorXd gamma = sourceFace.getGamma();
+        VectorXd shape = sourceFace.getShape();
+        VectorXd color = sourceFace.getColor();
+        VectorXd sh_red_coefficients = sourceFace.getSHRedCoefficients();
+        VectorXd sh_green_coefficients = sourceFace.getSHGreenCoefficients();
+        VectorXd sh_blue_coefficients = sourceFace.getSHBlueCoefficients();
 
-        unsigned numLandmarks = face.getFaceModel().getNumLandmarks();
+        unsigned numLandmarks = sourceFace.getFaceModel().getNumLandmarks();
 
         MatrixXd source_depth = img.getDepthMap();
-        cv::Mat point_normal = img.getNormalMap();
+        MatrixXd source_depth_down = img.getDepthMapDown();
+        cv::Mat source_point_normal = img.getNormalMap();
+        cv::Mat source_point_normal_down = img.getNormalMapDown();
         vector<MatrixXd> source_color = img.getRGB();
+        vector<MatrixXd> source_color_down = img.getRGBDown();
 
         if (option == 0) {
-            reconstruct_face(face, render, img, poseIncrement, faceModel, alpha, beta, gamma, shape, color, sh_red_coefficients, sh_green_coefficients,
-                sh_blue_coefficients, numLandmarks, source_depth, source_color, point_normal);
+            reconstruct_face(img, poseIncrement, faceModel, alpha, beta, gamma, shape, color, sh_red_coefficients, sh_green_coefficients,
+                sh_blue_coefficients, numLandmarks, source_depth, source_depth_down, source_color, source_color_down, source_point_normal, 
+                source_point_normal_down);
         }
         else {
             return;
@@ -443,56 +454,84 @@ public:
     }
 private:
     //--------------------------------------------------Functions for face reconstruction--------------------------------------------------//
-    void reconstruct_face(Face& face, Renderer& render, Image& img, PoseIncrement<double>& poseIncrement, FaceModel& faceModel, VectorXd& alpha, VectorXd& beta,
-        VectorXd& gamma, VectorXd& shape, VectorXd& color, VectorXd& sh_red_coefficients, VectorXd& sh_green_coefficients, VectorXd& sh_blue_coefficients, unsigned numLandmarks,
-        MatrixXd& source_depth, vector<MatrixXd>& source_color, cv::Mat& point_normal) {
+    void reconstruct_face(Image& img, PoseIncrement<double>& poseIncrement, FaceModel& faceModel, VectorXd& alpha, VectorXd& beta,
+        VectorXd& gamma, VectorXd& shape, VectorXd& color, VectorXd& sh_red_coefficients, VectorXd& sh_green_coefficients, VectorXd& sh_blue_coefficients, 
+        unsigned numLandmarks, MatrixXd& source_depth, MatrixXd& source_depth_down, vector<MatrixXd>& source_color, vector<MatrixXd>& source_color_down,
+        cv::Mat& source_point_normal, cv::Mat& source_point_normal_down) {
 
         bool estimate_expression_only = false;
         // Estimate shape, expression and illumination
         for (int i = 0; i < maxIteration; ++i) {
             // Create ceres problem
             ceres::Problem problem;
-            // Add energy terms
-            add_landmark_terms(problem, numLandmarks, img, source_depth, faceModel, face, alpha, gamma, poseIncrement, estimate_expression_only);
-            add_regularization_terms(problem, alpha, beta, gamma);
+            
             int intern_iteration = 20;
-            if (i > 0) {
-                add_geometry_and_color_terms(problem, render, face, img, faceModel, source_depth, source_color, alpha, gamma, beta, poseIncrement, sh_red_coefficients,
-                    sh_green_coefficients, sh_blue_coefficients, point_normal, estimate_expression_only);
-                intern_iteration = 1;
+            // Add energy terms
+            if (downsample) {
+                add_landmark_terms(problem, numLandmarks, img, source_depth_down, faceModel, alpha, gamma, poseIncrement, estimate_expression_only);
+                add_regularization_terms(problem, alpha, beta, gamma);
+                if (i > 0) {
+                    add_geometry_and_color_terms(problem, img, faceModel, source_depth_down, source_color_down, alpha, gamma, beta, poseIncrement, sh_red_coefficients,
+                        sh_green_coefficients, sh_blue_coefficients, source_point_normal_down, estimate_expression_only);
+                    intern_iteration = 1;
+                }
+            }
+
+            else {
+                add_landmark_terms(problem, numLandmarks, img, source_depth, faceModel, alpha, gamma, poseIncrement, estimate_expression_only);
+                add_regularization_terms(problem, alpha, beta, gamma);
+                if (i > 0) {
+                    add_geometry_and_color_terms(problem, img, faceModel, source_depth, source_color, alpha, gamma, beta, poseIncrement, sh_red_coefficients,
+                        sh_green_coefficients, sh_blue_coefficients, source_point_normal, estimate_expression_only);
+                    intern_iteration = 1;
+                }
             }
 
             // Solve problem
             solve(problem, intern_iteration, ceres::ITERATIVE_SCHUR);
             
             // UPDATE PARAMS
-            face.setAlpha(alpha);
-            face.setGamma(gamma);
-            face.setBeta(beta);
-            face.setExtrinsics(PoseIncrement<double>::convertToMatrix(poseIncrement));
-            face.setSHRedCoefficients(sh_red_coefficients);
-            face.setSHGreenCoefficients(sh_green_coefficients);
-            face.setSHBlueCoefficients(sh_blue_coefficients);
+            sourceFace.setAlpha(alpha);
+            sourceFace.setGamma(gamma);
+            sourceFace.setBeta(beta);
+            sourceFace.setExtrinsics(PoseIncrement<double>::convertToMatrix(poseIncrement));
+            sourceFace.setSHRedCoefficients(sh_red_coefficients);
+            sourceFace.setSHGreenCoefficients(sh_green_coefficients);
+            sourceFace.setSHBlueCoefficients(sh_blue_coefficients);
         }
 
-        face.setShape(face.calculateVerticesDefault());
-        face.setColor(face.calculateColorsDefault());
+        sourceFace.setShape(sourceFace.calculateVerticesDefault());
+        sourceFace.setColor(sourceFace.calculateColorsDefault());
 
         // Estimate texture from estimated shape, expression, color and illumination
-        VectorXd estimated_color = face.getColor();
-        optimize_texture(render, face, img, faceModel, source_depth, source_color, estimated_color);
-        face.setColor(estimated_color);
+        VectorXd estimated_color = sourceFace.getColor();
+        optimize_texture(img, faceModel, source_depth, source_color, estimated_color);
+        sourceFace.setColor(estimated_color);
     }
 
-    void add_landmark_terms(ceres::Problem& problem, int numLandmarks, Image& img, MatrixXd& source_depth, FaceModel& faceModel, Face& face, 
+    void add_landmark_terms(ceres::Problem& problem, int numLandmarks, Image& img, MatrixXd& source_depth, FaceModel& faceModel,
         VectorXd& alpha, VectorXd& gamma, PoseIncrement<double>& poseIncrement, bool expression) {
         for (unsigned i = 0; i < numLandmarks; i++) {
-            double depth = source_depth(int(img.getLandmark(i)(1)), int(img.getLandmark(i)(0))) / 255.;
+            Vector2d landmark_coord;
+            unsigned int width, height;
+
+            if (downsample) {
+                landmark_coord = img.getLandmark(i) / img.getDownScale();
+                width = img.getWidthDown();
+                height = img.getHeightDown();
+            }
+            else {
+                landmark_coord = img.getLandmark(i);
+                width = img.getWidth();
+                height = img.getHeight();
+            }
+
+            double depth = source_depth(int(landmark_coord(1)), int(landmark_coord(0))) / 255.;
             if (depth > 0) {
                 problem.AddResidualBlock(
                     new ceres::AutoDiffCostFunction<FeatureSimilarityEnergy, 3, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6>
-                    (new FeatureSimilarityEnergy(landmarkWeight, img.getLandmark(i), depth, &faceModel, &face, faceModel.getLandmarkVertexIdx(i),
-                        face.getIntrinsics(), img.getWidth(), img.getHeight(), face.get_z_near(), face.get_z_far(), expression)),
+                    (new FeatureSimilarityEnergy(landmarkWeight, landmark_coord, depth, &faceModel, &sourceFace, faceModel.getLandmarkVertexIdx(i),
+                        sourceFace.getIntrinsics(), width, height, sourceFace.get_z_near(), sourceFace.get_z_far(), expression)),
                     nullptr, alpha.data(), gamma.data(), poseIncrement.getData()
                 );
             }
@@ -517,34 +556,53 @@ private:
         );
     }
 
-    void add_geometry_and_color_terms(ceres::Problem& problem, Renderer& render, Face& face, Image& img, FaceModel& faceModel, MatrixXd& source_depth,
-        vector<MatrixXd>& source_color, VectorXd& alpha, VectorXd& gamma, VectorXd& beta, PoseIncrement<double>& poseIncrement, VectorXd& sh_red_coefficients,
-        VectorXd& sh_green_coefficients, VectorXd& sh_blue_coefficients, cv::Mat& point_normal, bool estimate_expression_only) {
+    void add_geometry_and_color_terms(ceres::Problem& problem, Image& img, FaceModel& faceModel, MatrixXd& source_depth,
+        vector<MatrixXd>& source_color, VectorXd& alpha, VectorXd& gamma, VectorXd& beta, PoseIncrement<double>& poseIncrement, 
+        VectorXd& sh_red_coefficients, VectorXd& sh_green_coefficients, VectorXd& sh_blue_coefficients, 
+        cv::Mat& point_normal, bool estimate_expression_only) {
 
-        render.clear_buffers();
+        rendererOriginal.clear_buffers();
+        rendererDownsampled.clear_buffers();
 
-        Matrix4f mvp_matrix = face.getFullProjectionMatrix().cast<float>().transpose();
-        Matrix4f mv_matrix = face.getExtrinsics().cast<float>().transpose();
-        Matrix4d projection_matrix = face.getIntrinsics();
-        VectorXf vertices = face.calculateVerticesDefault().cast<float>();
-        VectorXf colors = face.calculateColorsDefault().cast<float>();
-        VectorXf sh_red_coefficients_ = face.getSHRedCoefficients().cast<float>();
-        VectorXf sh_green_coefficients_ = face.getSHGreenCoefficients().cast<float>();
-        VectorXf sh_blue_coefficients_ = face.getSHBlueCoefficients().cast<float>();
+        Matrix4f mvp_matrix = sourceFace.getFullProjectionMatrix().cast<float>().transpose();
+        Matrix4f mv_matrix = sourceFace.getExtrinsics().cast<float>().transpose();
+        Matrix4d projection_matrix = sourceFace.getIntrinsics();
+        VectorXf vertices = sourceFace.calculateVerticesDefault().cast<float>();
+        VectorXf colors = sourceFace.calculateColorsDefault().cast<float>();
+        VectorXf sh_red_coefficients_ = sourceFace.getSHRedCoefficients().cast<float>();
+        VectorXf sh_green_coefficients_ = sourceFace.getSHGreenCoefficients().cast<float>();
+        VectorXf sh_blue_coefficients_ = sourceFace.getSHBlueCoefficients().cast<float>();
 
-        render.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients_, sh_green_coefficients_, sh_blue_coefficients_, face.get_z_near(), face.get_z_far());
-        cv::Mat color_buffer = render.get_color_buffer();
-        cv::Mat indices_buffer = render.get_pixel_triangle_buffer();
-        cv::Mat bary_coords = render.get_pixel_bary_coord_buffer();
-        cv::Mat pixel_triangle_normal_buffer = render.get_pixel_triangle_normal_buffer();
-        cv::Mat rendered_depth_buffer = render.get_depth_buffer();
+        cv::Mat color_buffer, indices_buffer, bary_coords, pixel_triangle_normal_buffer, rendered_depth_buffer;
+        unsigned int height, width;
 
-        //cv::imshow("depth", rendered_depth_buffer);
-        //cv::imshow("color", color_buffer);
-        //cv::waitKey(0);
+        if (downsample) {
+            rendererDownsampled.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients_, sh_green_coefficients_, sh_blue_coefficients_, sourceFace.get_z_near(), sourceFace.get_z_far());
+            color_buffer = rendererDownsampled.get_color_buffer();
+            indices_buffer = rendererDownsampled.get_pixel_triangle_buffer();
+            bary_coords = rendererDownsampled.get_pixel_bary_coord_buffer();
+            pixel_triangle_normal_buffer = rendererDownsampled.get_pixel_triangle_normal_buffer();
+            rendered_depth_buffer = rendererDownsampled.get_depth_buffer();
+            height = img.getHeightDown();
+            width = img.getWidthDown();
+        }
+        else {
+            rendererOriginal.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients_, sh_green_coefficients_, sh_blue_coefficients_, sourceFace.get_z_near(), sourceFace.get_z_far());
+            color_buffer = rendererOriginal.get_color_buffer();
+            indices_buffer = rendererOriginal.get_pixel_triangle_buffer();
+            bary_coords = rendererOriginal.get_pixel_bary_coord_buffer();
+            pixel_triangle_normal_buffer = rendererOriginal.get_pixel_triangle_normal_buffer();
+            rendered_depth_buffer = rendererOriginal.get_depth_buffer();
+            height = img.getHeight();
+            width = img.getWidth();
+        }
 
-        for (unsigned i = 0; i < img.getHeight(); ++i) {
-            for (unsigned j = 0; j < img.getWidth(); ++j) {
+        cv::imshow("depth", rendered_depth_buffer);
+        cv::imshow("color", color_buffer);
+        cv::waitKey(0);
+
+        for (unsigned i = 0; i < height; ++i) {
+            for (unsigned j = 0; j < width; ++j) {
                 float depth = rendered_depth_buffer.at<float>(i, j);
                 if (depth != 0 && source_depth(i, j) != 0) {
                     Vector3i indices = faceModel.getTriangulationByRow(indices_buffer.at<int>(i, j));
@@ -584,8 +642,8 @@ private:
                             problem.AddResidualBlock(
                                 new ceres::AutoDiffCostFunction<GeometryPoint2PlaneConsistencyEnergy, 2, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6>
                                 (new GeometryPoint2PlaneConsistencyEnergy(planeWeight, vertex_indices, vertices_affine_bary_coords,
-                                    source_depth(i, j) / 255., point_normal_source, &faceModel, &face, projection_matrix, double(i) + 0.5, double(j) + 0.5,
-                                    double(img.getWidth()), double(img.getHeight()), face.get_z_near(), face.get_z_far(), estimate_expression_only)),
+                                    source_depth(i, j) / 255., point_normal_source, &faceModel, &sourceFace, projection_matrix, double(i) + 0.5, double(j) + 0.5,
+                                    double(width), double(height), sourceFace.get_z_near(), sourceFace.get_z_far(), estimate_expression_only)),
                                 nullptr, alpha.data(), gamma.data(), poseIncrement.getData()
                             );
                         }
@@ -595,8 +653,8 @@ private:
                     problem.AddResidualBlock(
                         new ceres::AutoDiffCostFunction<GeometryPoint2PointConsistencyEnergy, 3, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6>
                         (new GeometryPoint2PointConsistencyEnergy(pointWeight, indices, perspective_corrected_bary_coord,
-                            source_depth(i, j) / 255., &faceModel, &face, projection_matrix, double(i) + 0.5, double(j) + 0.5,
-                            double(img.getWidth()), double(img.getHeight()), face.get_z_near(), face.get_z_far(), estimate_expression_only)),
+                            source_depth(i, j) / 255., &faceModel, &sourceFace, projection_matrix, double(i) + 0.5, double(j) + 0.5,
+                            double(width), double(height), sourceFace.get_z_near(), sourceFace.get_z_far(), estimate_expression_only)),
                         nullptr, alpha.data(), gamma.data(), poseIncrement.getData()
                     );
 
@@ -624,7 +682,7 @@ private:
 
                     problem.AddResidualBlock(
                         new ceres::AutoDiffCostFunction<ColorConsistencyEnergy, 3, BFM_BETA_SIZE, 9, 9, 9>
-                        (new ColorConsistencyEnergy(colorWeight, source_color_, indices, perspective_corrected_bary_coord, &faceModel, &face, sh_basis_vertex_0, 
+                        (new ColorConsistencyEnergy(colorWeight, source_color_, indices, perspective_corrected_bary_coord, &faceModel, &sourceFace, sh_basis_vertex_0,
                             sh_basis_vertex_1, sh_basis_vertex_2, estimate_expression_only)),
                         nullptr, beta.data(), sh_red_coefficients.data(), sh_green_coefficients.data(), sh_blue_coefficients.data()
                     );
@@ -633,31 +691,31 @@ private:
         }
     }
 
-    void optimize_texture(Renderer& render, Face& face, Image& img, FaceModel& faceModel, MatrixXd& source_depth,
+    void optimize_texture(Image& img, FaceModel& faceModel, MatrixXd& source_depth,
         vector<MatrixXd>& source_color, VectorXd& color) {
-        render.clear_buffers();
+        rendererOriginal.clear_buffers();
 
-        Matrix4f mvp_matrix = face.getFullProjectionMatrix().cast<float>().transpose();
-        Matrix4f mv_matrix = face.getExtrinsics().cast<float>().transpose();
-        VectorXf vertices = face.getShape().cast<float>();
-        VectorXf colors = face.getColor().cast<float>();
-        VectorXf sh_red_coefficients_ = face.getSHRedCoefficients().cast<float>();
-        VectorXf sh_green_coefficients_ = face.getSHGreenCoefficients().cast<float>();
-        VectorXf sh_blue_coefficients_ = face.getSHBlueCoefficients().cast<float>();
+        Matrix4f mvp_matrix = sourceFace.getFullProjectionMatrix().cast<float>().transpose();
+        Matrix4f mv_matrix = sourceFace.getExtrinsics().cast<float>().transpose();
+        VectorXf vertices = sourceFace.getShape().cast<float>();
+        VectorXf colors = sourceFace.getColor().cast<float>();
+        VectorXf sh_red_coefficients_ = sourceFace.getSHRedCoefficients().cast<float>();
+        VectorXf sh_green_coefficients_ = sourceFace.getSHGreenCoefficients().cast<float>();
+        VectorXf sh_blue_coefficients_ = sourceFace.getSHBlueCoefficients().cast<float>();
 
-        render.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients_, sh_green_coefficients_, sh_blue_coefficients_, face.get_z_near(), face.get_z_far());
+        rendererOriginal.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients_, sh_green_coefficients_, sh_blue_coefficients_, sourceFace.get_z_near(), sourceFace.get_z_far());
 
-        cv::Mat indices_buffer = render.get_pixel_triangle_buffer();
-        cv::Mat bary_coords = render.get_pixel_bary_coord_buffer();
-        cv::Mat pixel_triangle_normal_buffer = render.get_pixel_triangle_normal_buffer();
-        cv::Mat depth_buffer = render.get_depth_buffer();
+        cv::Mat indices_buffer = rendererOriginal.get_pixel_triangle_buffer();
+        cv::Mat bary_coords = rendererOriginal.get_pixel_bary_coord_buffer();
+        cv::Mat pixel_triangle_normal_buffer = rendererOriginal.get_pixel_triangle_normal_buffer();
+        cv::Mat depth_buffer = rendererOriginal.get_depth_buffer();
 
         double pi = 3.1415926;
         int height = img.getHeight();
         int width = img.getWidth();
         mvp_matrix.transposeInPlace();
-        for (unsigned i = 0; i < img.getHeight(); ++i) {
-            for (unsigned j = 0; j < img.getWidth(); ++j) {
+        for (unsigned i = 0; i < height; ++i) {
+            for (unsigned j = 0; j < width; ++j) {
                 float depth = depth_buffer.at<float>(i, j);
                 if (!(depth == 0)) {
                     Vector3i indices = faceModel.getTriangulationByRow(indices_buffer.at<int>(i, j));
@@ -665,7 +723,7 @@ private:
                     cv::Vec<float, 9> triangle_vertex_normals = pixel_triangle_normal_buffer.at<cv::Vec<float, 9>>(i, j);
                     for (int z = 0; z < 3; ++z) {
                         Vector4f vertex;
-                        vertex.block(0, 0, 3, 1) = face.getShapeBlock(3 * indices(z), 3).cast<float>();
+                        vertex.block(0, 0, 3, 1) = sourceFace.getShapeBlock(3 * indices(z), 3).cast<float>();
                         vertex(3) = 1.0;
 
                         // Apply perspective projection
@@ -720,6 +778,9 @@ private:
     }
     // --------------------------------------------------General functions--------------------------------------------------//
 
+    bool downsample;
+    Face &sourceFace;
+    Renderer rendererDownsampled, rendererOriginal;
     double landmarkWeight, shapeRegWeight, expRegWeight, colorRegWeight, pointWeight, planeWeight, colorWeight;
     int maxIteration;
 };

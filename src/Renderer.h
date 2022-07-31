@@ -13,8 +13,10 @@
 
 class Renderer {
 public:
-	static Renderer& Get() {
-		return s_instance;
+	Renderer() {}
+
+	Renderer(FaceModel& face_model, int height, int width) {
+		initialiaze_rendering_context(face_model, height, width);
 	}
 
 	void initialiaze_rendering_context(FaceModel& face_model, int height, int width);
@@ -51,7 +53,6 @@ public:
 		VectorXf& sh_green_coefficients, VectorXf& sh_blue_coefficients, float z_near, float z_far);
 
 private:
-	static Renderer s_instance;
 	// Face model assigned to this render
 	int viewport_height, viewport_width, num_vertices, num_triangles;
 	

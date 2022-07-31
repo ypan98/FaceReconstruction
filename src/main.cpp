@@ -13,8 +13,6 @@ int taskOption = -1;
 // vector<string> inputOptions{ "Use sample image(s)" };
 // int inputOption = -1;
 
-Renderer Renderer::s_instance;
-
 void handleMenu() {
 	cout << "Please select a task:\n";
 	for (int i = 0; i < taskOptions.size(); i++) cout << i + 1 << ". " << taskOptions[i] << endl;
@@ -31,17 +29,18 @@ void handleMenu() {
 }
 
 void performTask() {
-	Optimizer optimizer;
-	auto render = Renderer::Get();
 	switch (taskOption) {
 	case 1:
 	{
 		// reconstruct face
 		Face sourceFace = Face("sample1", "BFM17");
-		render.initialiaze_rendering_context(sourceFace.getFaceModel(), sourceFace.getImage().getHeight(), sourceFace.getImage().getWidth());
+		Image img = sourceFace.getImage();
+		Renderer rendererOriginal(sourceFace.getFaceModel(), img.getHeight(), img.getWidth());
+		Renderer rendererDownsampled(sourceFace.getFaceModel(), img.getHeightDown(), img.getWidthDown());
 		sourceFace.setIntrinsics(double(60), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
 			double(8800), double(9000));
-		optimizer.optimize(sourceFace, 0);
+		Optimizer optimizer(sourceFace);
+		optimizer.optimize(0);
 		Matrix4f mvp_matrix = sourceFace.getFullProjectionMatrix().transpose().cast<float>();
 		Matrix4f mv_matrix = sourceFace.getExtrinsics().transpose().cast<float>();
 		VectorXf vertices = sourceFace.getShape().cast<float>();
@@ -49,14 +48,11 @@ void performTask() {
 		VectorXf sh_red_coefficients = sourceFace.getSHRedCoefficients().cast<float>();
 		VectorXf sh_green_coefficients = sourceFace.getSHGreenCoefficients().cast<float>();
 		VectorXf sh_blue_coefficients = sourceFace.getSHBlueCoefficients().cast<float>();
-		render.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients, sourceFace.get_z_near(),
+		rendererDownsampled.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients, sourceFace.get_z_near(),
 			sourceFace.get_z_far());
-		sourceFace.setColor(render.get_re_rendered_vertex_color().cast<double>());
-		imshow("face", render.get_color_buffer());
+		sourceFace.setColor(rendererDownsampled.get_re_rendered_vertex_color().cast<double>());
+		imshow("face", rendererDownsampled.get_color_buffer());
 		cv::waitKey(0);
-		cout << sourceFace.getSHRedCoefficients() << endl;
-		cout << sourceFace.getSHGreenCoefficients() << endl;
-		cout << sourceFace.getSHBlueCoefficients() << endl;
 
 		// write out mesh
 		sourceFace.writeReconstructedFace();
@@ -65,21 +61,21 @@ void performTask() {
 	case 2:
 	{
 		// reconstruct source face
-		Face sourceFace = Face("sample1", "BFM17");
-		render.initialiaze_rendering_context(sourceFace.getFaceModel(), sourceFace.getImage().getHeight(), sourceFace.getImage().getWidth());
-		sourceFace.setIntrinsics(double(60), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
-			double(8800), double(9000));
-		optimizer.optimize(sourceFace, 0);
-		// reconstruct target face
-		Face targetFace = Face("sample2", "BFM17");
-		render.initialiaze_rendering_context(sourceFace.getFaceModel(), sourceFace.getImage().getHeight(), sourceFace.getImage().getWidth());
-		targetFace.setIntrinsics(double(60), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
-			double(8800), double(9000));
-		optimizer.optimize(targetFace, 0);
-		// transfer expression and write out mesh
-		targetFace.transferExpression(sourceFace);
-		targetFace.writeReconstructedFace();
-		break;
+		//Face sourceFace = Face("sample1", "BFM17");
+		//render.initialiaze_rendering_context(sourceFace.getFaceModel(), sourceFace.getImage().getHeight(), sourceFace.getImage().getWidth());
+		//sourceFace.setIntrinsics(double(60), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
+		//	double(8800), double(9000));
+		//optimizer.optimize(sourceFace, 0);
+		//// reconstruct target face
+		//Face targetFace = Face("sample2", "BFM17");
+		//render.initialiaze_rendering_context(sourceFace.getFaceModel(), sourceFace.getImage().getHeight(), sourceFace.getImage().getWidth());
+		//targetFace.setIntrinsics(double(60), double(sourceFace.getImage().getWidth()) / double(sourceFace.getImage().getHeight()),
+		//	double(8800), double(9000));
+		//optimizer.optimize(targetFace, 0);
+		//// transfer expression and write out mesh
+		//targetFace.transferExpression(sourceFace);
+		//targetFace.writeReconstructedFace();
+		//break;
 	}
 	}
 }

@@ -55,7 +55,7 @@ public:
 		}
 	}
 	// read rgb value of the pixels from the image
-	static void loadRGB(std::string fileName, std::vector<MatrixXd>& rgb) {
+	static void loadRGB(std::string fileName, std::vector<MatrixXd>& rgb, std::vector<MatrixXd>& rgbDown) {
 		std::string pathToFile = PATH_TO_RGB_DIR + fileName + ".jpeg";
 		try
 		{
@@ -69,6 +69,18 @@ public:
 			rgb[1] = g;
 			cv::cv2eigen(rgbMat[0], b);
 			rgb[2] = b;
+
+			cv::Mat imageDown;
+			cv::resize(image, imageDown, cv::Size(image.cols / 2, image.rows / 2), 0, 0, cv::INTER_LINEAR);
+			cv::Mat rgbMatDown[3];
+			split(imageDown, rgbMatDown);
+			MatrixXd rDown, gDown, bDown;
+			cv::cv2eigen(rgbMatDown[2], rDown);
+			rgbDown[0] = rDown;
+			cv::cv2eigen(rgbMatDown[1], gDown);
+			rgbDown[1] = gDown;
+			cv::cv2eigen(rgbMatDown[0], bDown);
+			rgbDown[2] = bDown;
 		}
 		catch (cv::Exception& e)
 		{
@@ -77,12 +89,15 @@ public:
 		}
 	}
 	// read the depth map of the image
-	static void loadDepthMap(std::string fileName, MatrixXd& depthMap) {
+	static void loadDepthMap(std::string fileName, MatrixXd& depthMap, MatrixXd& depthMapDown) {
 		std::string pathToFile = PATH_TO_DEPTH_DIR + fileName + ".jpeg";
 		try
 		{
 			cv::Mat image = cv::imread(pathToFile, cv::IMREAD_GRAYSCALE);
 			cv::cv2eigen(image, depthMap);
+			cv::Mat imageDown;
+			cv::resize(image, imageDown, cv::Size(image.cols / 2, image.rows / 2), 0, 0, cv::INTER_LINEAR);
+			cv::cv2eigen(imageDown, depthMapDown);
 		}
 		catch (cv::Exception& e)
 		{
