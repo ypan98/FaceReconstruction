@@ -1,17 +1,19 @@
 """
 use pretrained model to predict depth from a RGB image
 """
-
+import argparse
 import cv2
 import torch
 import urllib.request
 import matplotlib.pyplot as plt
 
+parser = argparse.ArgumentParser(description='Description of your program')
+parser.add_argument('-f','--file', help='Image name (this file should be placed inside /data/samples/rgb/)', required=True)
+args = vars(parser.parse_args())
 
-
-filename = "sampleHighRes"
-inputFilename = "../data/samples/rgb/" + filename + ".jpeg"
-outputFilename = "../data/samples/depth/" +  filename + ".jpeg"
+filename = args["file"]
+inputFilename = "../data/samples/rgb/" + filename + ".png"
+outputFilename = "../data/samples/depth/" +  filename + ".png"
 
 model_type = "DPT_Large" 
 midas = torch.hub.load("intel-isl/MiDaS", model_type)

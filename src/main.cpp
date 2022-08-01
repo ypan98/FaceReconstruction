@@ -26,7 +26,7 @@ void performTask() {
 		case 1:
 		{
 			// initialize
-			Face sourceFace = Face("sample3", "BFM17");
+			Face sourceFace = Face("00100", "BFM17");
 			Image img = sourceFace.getImage();
 			Renderer rendererDownsampled(sourceFace.getFaceModel(), img.getHeightDown(), img.getWidthDown());
 			Optimizer optimizer(sourceFace);
@@ -54,7 +54,7 @@ void performTask() {
 		case 2:
 		{
 			// source face fitting
-			Face sourceFace = Face("sample1", "BFM17");
+			Face sourceFace = Face("sample6", "BFM17");
 			Image img = sourceFace.getImage();
 			Optimizer optimizer(sourceFace);
 			optimizer.optimize(false, false);
@@ -69,20 +69,15 @@ void performTask() {
 			Matrix4f mvp_matrix = targetFace.getFullProjectionMatrix().transpose().cast<float>();
 			Matrix4f mv_matrix = targetFace.getExtrinsics().transpose().cast<float>();
 			VectorXf vertices = targetFace.getShapeWithExpression().cast<float>();
-			VectorXf vertices2 = targetFace.getShape().cast<float>();
 			VectorXf colors = targetFace.getColor().cast<float>();
 			VectorXf sh_red_coefficients = targetFace.getSHRedCoefficients().cast<float>();
 			VectorXf sh_green_coefficients = targetFace.getSHGreenCoefficients().cast<float>();
 			VectorXf sh_blue_coefficients = targetFace.getSHBlueCoefficients().cast<float>();
 			Renderer rendererDownsampled(targetFace.getFaceModel(), img2.getHeightDown(), img2.getWidthDown());
-			Renderer rendererDownsampled2(targetFace.getFaceModel(), img.getHeightDown(), img.getWidthDown());
 			rendererDownsampled.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients, targetFace.get_z_near(),
 				targetFace.get_z_far());
-			rendererDownsampled2.render(mvp_matrix, mv_matrix, vertices2, colors, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients, sourceFace.get_z_near(),
-				sourceFace.get_z_far());
 			targetFace.setColor(rendererDownsampled.get_re_rendered_vertex_color().cast<double>());
 			imshow("Expression transferred target face", rendererDownsampled.get_color_buffer());
-			imshow("Neutral shape", rendererDownsampled2.get_color_buffer());
 			cv::waitKey(0);
 			// write out mesh
 			targetFace.writeReconstructedFace();

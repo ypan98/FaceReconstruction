@@ -10,6 +10,8 @@
 #define NUM_LANDMARKS 68
 #define LANDMARK_DIM 2
 
+// image format
+const std::string IMG_FORMAT = ".png";
 // full paths 
 const std::string PATH_TO_LANDMARK_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/landmark/");
 const std::string PATH_TO_RGB_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/rgb/");
@@ -56,7 +58,7 @@ public:
 	}
 	// read rgb values from the image and also store the downsampled version
 	static void loadRGB(std::string fileName, std::vector<MatrixXd>& rgb, std::vector<MatrixXd>& rgbDown) {
-		std::string pathToFile = PATH_TO_RGB_DIR + fileName + ".jpeg";
+		std::string pathToFile = PATH_TO_RGB_DIR + fileName + IMG_FORMAT;
 		try
 		{
 			cv::Mat image = cv::imread(pathToFile, cv::IMREAD_COLOR);
@@ -90,7 +92,7 @@ public:
 	}
 	// read the depth map of the image and also store the downsampled version
 	static void loadDepthMap(std::string fileName, MatrixXd& depthMap, MatrixXd& depthMapDown) {
-		std::string pathToFile = PATH_TO_DEPTH_DIR + fileName + ".jpeg";
+		std::string pathToFile = PATH_TO_DEPTH_DIR + fileName + IMG_FORMAT;
 		try
 		{
 			cv::Mat image = cv::imread(pathToFile, cv::IMREAD_GRAYSCALE);

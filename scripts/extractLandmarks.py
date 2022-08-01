@@ -4,26 +4,28 @@ The model used is a combination of:
     - S3FD to detect the bounding box of the face.
     - 2D-FAN (Bulat et al.) to produce 68 landmarks.
 """
-
+import argparse
 import face_alignment
 import cv2
 import numpy as np
 import torch
 
 IS_IMG = True
-SHOW_LM = False
 
 
-sampleName = "sample5"
-itemPath = "../data/samples/rgb/" + sampleName + ".jpeg"
+parser = argparse.ArgumentParser(description='Description of your program')
+parser.add_argument('-f','--file', help='Image name (this file should be placed inside /data/samples/rgb/)', required=True)
+parser.add_argument('--print', default=False, action='store_true')
+args = vars(parser.parse_args())
+sampleName = args["file"]
+showLm = args["print"]
+
+itemPath = "../data/samples/rgb/" + sampleName + ".png"
 landmarkOutputPath = "../data/samples/landmark/" + sampleName + ".txt"
 
 
 # load model
-device = 'cpu'
-if torch.cuda.is_available():
-    device = 'cuda'
-model = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, device=device, face_detector='sfd')
+model = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, device="cuda" if torch.cuda.is_available() else "cpu", face_detector='sfd')
 
 # detect landmarks
 if IS_IMG:
@@ -38,8 +40,9 @@ landmarks = np.array(landmarks)
 if IS_IMG:
     landmarks = landmarks.squeeze()
 np.savetxt(landmarkOutputPath, landmarks)
+print("Landmarks saved at ", landmarkOutputPath)
 
-if SHOW_LM:
+if showLm:
     landmarks = landmarks.astype(int)
     for pixel in landmarks:
         image = cv2.circle(img, (pixel[0],pixel[1]), radius=2, color=(255, 0, 0), thickness=-1)

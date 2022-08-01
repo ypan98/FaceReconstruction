@@ -506,7 +506,7 @@ private:
             sourceFace.setColor(sourceFace.calculateColorsDefault());
             // Estimate texture from estimated shape, expression, color and illumination
             VectorXd estimated_color = sourceFace.getColor();
-            //optimize_texture(img, faceModel, source_depth, source_color, estimated_color);
+            optimize_texture(img, faceModel, source_depth, source_color, estimated_color);
             sourceFace.setColor(estimated_color);
         }
     }
