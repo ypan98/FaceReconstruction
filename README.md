@@ -69,6 +69,11 @@ Some files needs to be placed in certain directories so the program can find the
     BFM17.h5      # Basel Face Model 2017, which can be downloaded from "https://faces.dmi.unibas.ch/bfm/bfm2017.html" (the simplified model)
 ```
 ### Preprocessin scripts
+The programs are implemented with python and you would need to install some packages before running them:
+```
+cd scripts
+pip install -r requirements.txt
+```
 
 #### Landmarks
 You have to run /scripts/extractLandmarks.py to precompute the location of the landmarks for the input image (or sequence), before trying to run the program and fit the face model.
