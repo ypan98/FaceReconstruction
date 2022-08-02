@@ -17,6 +17,7 @@ const std::string PATH_TO_LANDMARK_DIR = convert_path(get_full_path_to_project_r
 const std::string PATH_TO_RGB_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/rgb/");
 const std::string PATH_TO_DEPTH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/samples/depth/");
 const std::string PATH_TO_MESH_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/outputMesh/");
+const std::string PATH_TO_OUTPUT_SEQ_DIR = convert_path(get_full_path_to_project_root_dir() + "/data/outputSequence/");
 // facemodel
 const std::map<std::string, std::string> FACE_MODEL_TO_DIR_MAP = {
 	{ "BFM17", convert_path(get_full_path_to_project_root_dir() + "/data/BFM17.h5")},
@@ -57,11 +58,12 @@ public:
 		}
 	}
 	// read rgb values from the image and also store the downsampled version
-	static void loadRGB(std::string fileName, std::vector<MatrixXd>& rgb, std::vector<MatrixXd>& rgbDown) {
+	static void loadRGB(std::string fileName, std::vector<MatrixXd>& rgb, std::vector<MatrixXd>& rgbDown, cv::Mat& bgrCopy) {
 		std::string pathToFile = PATH_TO_RGB_DIR + fileName + IMG_FORMAT;
 		try
 		{
 			cv::Mat image = cv::imread(pathToFile, cv::IMREAD_COLOR);
+			bgrCopy = image.clone();
 			cv::Mat rgbMat[3];
 			split(image, rgbMat);	//split source
 			MatrixXd r, g, b;
@@ -219,6 +221,19 @@ public:
 			outFile << "3 " << mesh.faces.row(i) << std::endl;
 		}
 		return true;
+	}
+	// save a frame of a sequence to the directory stated for output sequences
+	static void saveFrame(const cv::Mat& frame, std::string fileName) {
+		std::string outputPath = PATH_TO_OUTPUT_SEQ_DIR + fileName + IMG_FORMAT;
+		try
+		{
+			cv::imwrite(outputPath, frame);
+		}
+		catch (cv::Exception& e)
+		{
+			std::cerr << "cv2 exception saving to " << outputPath << std::endl;
+			std::cerr << e.what() << std::endl;
+		}
 	}
 };
 	

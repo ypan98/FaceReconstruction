@@ -26,13 +26,14 @@ public:
 		DataHandler::readTriangulation(_faceModel, triangulation);
 		DataHandler::readFaceModelLandmarks(_faceModel, landmarks);
 		updateBasisWithStd();	// basis with std applied
+		extraVertices = 0;
 	}
 	// getter and setters
 	std::string getFaceModelName() {
 		return faceModelName;
 	}
 	unsigned int getNumVertices() const {
-		return shapeBasis.rows()/3;
+		return shapeBasis.rows()/3 + extraVertices;
 	}
 
 	unsigned int getAlphaSize() const {
@@ -131,6 +132,14 @@ public:
 		return expBasis(i, j);
 	}
 
+	void setTriangulation(MatrixX3i triangulation) {
+		this->triangulation = triangulation;
+	}
+
+	void setExtraVertices(int numExtraVertices) {
+		this->extraVertices = numExtraVertices;
+	}
+
 	MatrixX3i getTriangulation() const {
 		return triangulation;
 	}
@@ -173,4 +182,6 @@ private:
 	  colorBasis = (colorVar.cwiseSqrt().asDiagonal() * colorBasis.transpose()).transpose();
 	  expBasis = (expVar.cwiseSqrt().asDiagonal() * expBasis.transpose()).transpose();
   }
+  // extra vertices that doesnt belong to the face model
+  int extraVertices;
 };

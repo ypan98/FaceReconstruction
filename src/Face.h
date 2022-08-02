@@ -13,12 +13,12 @@ public:
 		alpha = VectorXd::Zero(faceModel.getAlphaSize());
 		beta = VectorXd::Zero(faceModel.getBetaSize());
 		gamma = VectorXd::Zero(faceModel.getGammaSize());
-		sh_red_coefficients = VectorXd::Ones(9);
-		sh_green_coefficients = VectorXd::Ones(9);
-		sh_blue_coefficients = VectorXd::Ones(9);
+		sh_red_coefficients = VectorXd::Zero(9);
+		sh_green_coefficients = VectorXd::Zero(9);
+		sh_blue_coefficients = VectorXd::Zero(9);
 		shape = faceModel.getShapeMean();
 		color = faceModel.getColorMean();
-		setIntrinsics(double(60), double(image.getWidth()) / double(image.getHeight()),
+		setIntrinsics(double(54), double(image.getWidth()) / double(image.getHeight()),
 			double(8800), double(9000));
 		extrinsics = Matrix4d::Identity();
 		extrinsics(2, 3) = -400;
@@ -27,10 +27,6 @@ public:
 	void writeReconstructedFace() {
 		Mesh mesh = toMesh();
 		DataHandler::writeMesh(mesh, image.getFileName());
-	}
-	// Transfer the expression from the source face to the current face
-	void transferExpression(const Face& sourceFace) {
-		this->gamma = sourceFace.gamma;
 	}
 	// Randomize parameters (for testing purpose)
 	void randomizeParameters(double scaleAlpha = 1, double scaleBeta = 1, double scaleGamma = 1) {
@@ -41,6 +37,7 @@ public:
 	// construct the mesh with alpha, beta, gamma and face model variables
 	Mesh toMesh() {
 		Mesh mesh;
+		//MatrixXd vertices = shape + faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
 		MatrixXd vertices = shape + faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
 		vertices.resize(3, faceModel.getNumVertices());
 		mesh.vertices = vertices.transpose();
@@ -78,6 +75,9 @@ public:
 	}
 
 	// getters and setters
+	void setImage(std::string _imageFileName) {
+		this->image = Image(_imageFileName);
+	}
 	unsigned getNumTriangles() const {
 		return faceModel.getTriangulationRows();
 	}

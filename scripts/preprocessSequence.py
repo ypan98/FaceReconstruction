@@ -3,13 +3,11 @@ Script used to preprocess the RGBD video sequence recorded with Kinect in order 
 Center cropping, switching black <-> white, background to black. For RGB, only cropping is performed
 """
 import argparse
-
-from click import pass_context
 import cv2
 import numpy as np
 from os import walk
 
-parser = argparse.ArgumentParser(description='Description of your program')
+parser = argparse.ArgumentParser(description='Preprocess the image sequence recorded by Kinect')
 parser.add_argument('-f','--folder', help='Folder relative path', required=True)
 parser.add_argument('-m','--mode', help='Mode: either rgb or depth', required=True)
 parser.add_argument('-o','--output', help='Output directory path', required=True)
@@ -26,8 +24,8 @@ files_in_folder = next(walk(input_folder), (None, None, []))[2]
 output_folder = args["output"]
 if not output_folder.endswith('/'):
     output_folder += "/"
-output_h = args["height"]
-output_w = args["width"]
+output_h = int(args["height"])
+output_w = int(args["width"])
 max_depth = args["range"]
 
 
@@ -45,7 +43,7 @@ def center_crop(img, wanted_h, wanted_w):
     return img[start_h:end_h, start_w:end_w]
 
 # preprocess depth map by transforming from cm to m, removing background (> max_depth), flipping (whiter = higher distance) and normalizing to [0, 255]
-def preprocess_depth_map(img):
+def preprocess_depth_map(image):
     # to meter
     image = image/1000 
     # background removal (to 0)
@@ -61,6 +59,7 @@ def preprocess_depth_map(img):
     image[np.where(image != 0)] = 1-image[np.where(image != 0)]
     # to [0, 255]
     image = (255*image).astype(int)
+    return image
 
 # loop over files
 for file in files_in_folder:

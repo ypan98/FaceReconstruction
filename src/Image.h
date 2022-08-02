@@ -14,7 +14,7 @@ public:
 		DataHandler::loadDepthMap(_fileName, depthMap, depthMapDown);
 		rgb = std::vector<MatrixXd>(3);
 		rgbDown = std::vector<MatrixXd>(3);
-		DataHandler::loadRGB(_fileName, rgb, rgbDown);
+		DataHandler::loadRGB(_fileName, rgb, rgbDown, bgrCopy);
 		DataHandler::loadLandmarks(fileName, landmarks);
 		height = depthMap.rows();
 		width = depthMap.cols();
@@ -46,6 +46,8 @@ public:
 	cv::Mat getNormalMap() { return normalMap; }
 
 	cv::Mat getNormalMapDown() { return normalMapDown; }
+
+	cv::Mat getBGRCopy() { return bgrCopy; }
 
 	std::vector<MatrixXd> getRGB() { return rgb; }
 	
@@ -94,6 +96,7 @@ private:
 	unsigned int width, height;	// size of the image
 	MatrixXd depthMap, depthMapDown;	// matrix of HxW. 255 for closest distance and 0 for farthest.
 	std::vector<MatrixXd> rgb, rgbDown;	// [r, g, b] each of these is a matrix of W x H with values between [0, 255]
+	cv::Mat bgrCopy;
 	MatrixX2d landmarks;	// 68 2D facial landmarks detected by dl model
 	cv::Mat normalMap, normalMapDown;
 	double downscale;

@@ -77,6 +77,7 @@ public:
         }
         else {
             vertex = (*face).getShapeBlock(3 * vertexIdx, 3).cast<T>()
+                + (*faceModel).getExpMeanBlock(3 * vertexIdx, 3).cast<T>()
                 + (*faceModel).getExpBasisRowBlock(3 * vertexIdx, 3) * gammaMap;
         }
 
@@ -150,6 +151,7 @@ public:
             }
             else {
                 vertices.block(0, i, 3, 1) = (*face).getShapeBlock(3 * vertex_indices(i), 3).cast<T>()
+                    + (*faceModel).getExpMeanBlock(3 * vertex_indices(i), 3).cast<T>()
                     + (*faceModel).getExpBasisRowBlock(3 * vertex_indices(i), 3) * gammaMap;
             }
             vertices(3, i) = T(1);
@@ -235,6 +237,7 @@ public:
             }
             else {
                 vertices.block(0, i, 3, 1) = (*face).getShapeBlock(3 * vertex_indices(i), 3).cast<T>()
+                    + (*faceModel).getExpMeanBlock(3 * vertex_indices(i), 3).cast<T>()
                     + (*faceModel).getExpBasisRowBlock(3 * vertex_indices(i), 3) * gammaMap;
             }
             vertices(3, i) = T(1);
@@ -407,8 +410,8 @@ class Optimizer {
 
 public:
     // constructor with optimizer options and energy term weights
-    Optimizer(Face& _sourceFace, bool _downsample = true, double _landmakrWeight = 0.35, double _pointWeight = 1.14, double _planeWeight = 3.34, double _colorWeight = 4.47, 
-        double _shapeRegWeight = 0.05, double _expRegWeight = 0.05, double _coloRegWeight = 0.05, int _maxIteration = 3):sourceFace(_sourceFace) {
+    Optimizer(Face& _sourceFace, bool _downsample = true, double _landmakrWeight = 0.35, double _pointWeight = 0.8, double _planeWeight = 2.23, double _colorWeight = 4.47, 
+        double _shapeRegWeight = 0.05, double _expRegWeight = 0.05, double _coloRegWeight = 0.05, int _maxIteration = 5):sourceFace(_sourceFace) {
         downsample = _downsample;
 
         // Initialize energy weights
@@ -428,7 +431,7 @@ public:
     }
 
     // optimize for the face parameters
-    void optimize(bool estimate_expression_only = false, bool show_intermediate_results = true) {
+    void optimize(bool estimate_expression_only = false, bool show_intermediate_results = true, bool show_optimization_stats = true) {
         Image img = sourceFace.getImage();
         // Extrinsic setting
         double poseArr[6];
@@ -452,19 +455,6 @@ public:
         vector<MatrixXd> source_color = img.getRGB();
         vector<MatrixXd> source_color_down = img.getRGBDown();
 
-        // reconstruct face or only expression and illumination parameters depending on option
-        fit_face(img, poseIncrement, faceModel, alpha, beta, gamma, shape, color, sh_red_coefficients, sh_green_coefficients,
-            sh_blue_coefficients, numLandmarks, source_depth, source_depth_down, source_color, source_color_down, source_point_normal, 
-            source_point_normal_down, estimate_expression_only, show_intermediate_results);
-        
-    }
-private:
-    //--------------------------------------------------Functions for face reconstruction--------------------------------------------------//
-
-    void fit_face(Image& img, PoseIncrement<double>& poseIncrement, FaceModel& faceModel, VectorXd& alpha, VectorXd& beta,
-        VectorXd& gamma, VectorXd& shape, VectorXd& color, VectorXd& sh_red_coefficients, VectorXd& sh_green_coefficients, VectorXd& sh_blue_coefficients, 
-        unsigned numLandmarks, MatrixXd& source_depth, MatrixXd& source_depth_down, vector<MatrixXd>& source_color, vector<MatrixXd>& source_color_down,
-        cv::Mat& source_point_normal, cv::Mat& source_point_normal_down, bool estimate_expression_only, bool show_intermediate_results) {
         // Estimate shape, expression and illumination
         for (int i = 0; i < maxIteration; ++i) {
             // Create ceres problem
@@ -490,11 +480,13 @@ private:
                 }
             }
             // Solve problem
-            solve(problem, intern_iteration, ceres::ITERATIVE_SCHUR);
+            solve(problem, intern_iteration, ceres::ITERATIVE_SCHUR, show_optimization_stats);
             // UPDATE PARAMS
-            sourceFace.setAlpha(alpha);
+            if (!estimate_expression_only) {
+                sourceFace.setAlpha(alpha);
+                sourceFace.setBeta(beta);
+            }
             sourceFace.setGamma(gamma);
-            sourceFace.setBeta(beta);
             sourceFace.setExtrinsics(PoseIncrement<double>::convertToMatrix(poseIncrement));
             sourceFace.setSHRedCoefficients(sh_red_coefficients);
             sourceFace.setSHGreenCoefficients(sh_green_coefficients);
@@ -510,11 +502,12 @@ private:
             sourceFace.setColor(estimated_color);
         }
     }
-
+private:
+    //--------------------------------------------------Functions for face reconstruction--------------------------------------------------//
     // add landmakr terms to the problem
     void add_landmark_terms(ceres::Problem& problem, int numLandmarks, Image& img, MatrixXd& source_depth, FaceModel& faceModel,
         VectorXd& alpha, VectorXd& gamma, PoseIncrement<double>& poseIncrement, bool expression) {
-        for (unsigned i = 0; i < numLandmarks; i++) {
+        for (unsigned i = 17; i < numLandmarks; i++) {
             Vector2d landmark_coord;
             unsigned int width, height;
 
@@ -704,14 +697,13 @@ private:
 
         Matrix4f mvp_matrix = sourceFace.getFullProjectionMatrix().cast<float>().transpose();
         Matrix4f mv_matrix = sourceFace.getExtrinsics().cast<float>().transpose();
-        VectorXf vertices = sourceFace.getShape().cast<float>();
+        VectorXf vertices = sourceFace.getShapeWithExpression().cast<float>();
         VectorXf colors = sourceFace.getColor().cast<float>();
         VectorXf sh_red_coefficients_ = sourceFace.getSHRedCoefficients().cast<float>();
         VectorXf sh_green_coefficients_ = sourceFace.getSHGreenCoefficients().cast<float>();
         VectorXf sh_blue_coefficients_ = sourceFace.getSHBlueCoefficients().cast<float>();
 
         rendererOriginal.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients_, sh_green_coefficients_, sh_blue_coefficients_, sourceFace.get_z_near(), sourceFace.get_z_far());
-
         cv::Mat indices_buffer = rendererOriginal.get_pixel_triangle_buffer();
         cv::Mat bary_coords = rendererOriginal.get_pixel_bary_coord_buffer();
         cv::Mat pixel_triangle_normal_buffer = rendererOriginal.get_pixel_triangle_normal_buffer();
@@ -730,7 +722,7 @@ private:
                     cv::Vec<float, 9> triangle_vertex_normals = pixel_triangle_normal_buffer.at<cv::Vec<float, 9>>(i, j);
                     for (int z = 0; z < 3; ++z) {
                         Vector4f vertex;
-                        vertex.block(0, 0, 3, 1) = sourceFace.getShapeBlock(3 * indices(z), 3).cast<float>();
+                        vertex.block(0, 0, 3, 1) = vertices.block(3 * indices(z), 0, 3, 1).cast<float>();
                         vertex(3) = 1.0;
 
                         // Apply perspective projection
@@ -770,17 +762,16 @@ private:
     //--------------------------------------------------Functions for face reconstruction--------------------------------------------------//
 
     // --------------------------------------------------General functions--------------------------------------------------//
-    void solve(ceres::Problem& problem, int max_iterations, ceres::LinearSolverType solver_type) {
+    void solve(ceres::Problem& problem, int max_iterations, ceres::LinearSolverType solver_type, bool show_optimization_stats) {
         ceres::Solver::Options options;
-        options.dense_linear_algebra_library_type = ceres::CUDA;
         options.num_threads = omp_get_max_threads();
         options.max_num_iterations = max_iterations;
-        options.linear_solver_type = solver_type;
-        // options.preconditioner_type = ceres::JACOBI;
-        options.minimizer_progress_to_stdout = true;
+        options.linear_solver_type = ceres::DENSE_QR;
+        options.dense_linear_algebra_library_type = ceres::CUDA;
+        options.minimizer_progress_to_stdout = false;
         ceres::Solver::Summary summary;
         ceres::Solve(options, &problem, &summary);
-        std::cout << summary.BriefReport() << std::endl;
+        if (show_optimization_stats) std::cout << summary.BriefReport() << std::endl;
     }
     // --------------------------------------------------General functions--------------------------------------------------//
 
