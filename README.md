@@ -1,11 +1,4 @@
 # FaceReconstruction
-## Data Preparation
-Some files needs to be placed in certain directories so the program can find them, namely:
-```
-- data/
-    BFM17.h5      # Basel Face Model 2017, which can be downloaded from "https://faces.dmi.unibas.ch/bfm/bfm2017.html"
-```
-
 ## Install Dependencies
 In order to install dependencies for this project please follow the following steps.
 ### For Ubuntu Users
@@ -68,3 +61,20 @@ cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j8
 ```
+
+## Data Preparation
+Some files needs to be placed in certain directories so the program can find them correctly:
+```
+- data/
+    BFM17.h5      # Basel Face Model 2017, which can be downloaded from "https://faces.dmi.unibas.ch/bfm/bfm2017.html" (the simplified model)
+```
+### Preprocessin scripts
+
+#### Landmarks
+You have to run /scripts/extractLandmarks.py to precompute the location of the landmarks for the input image (or sequence), before trying to run the program and fit the face model.
+
+#### Depth
+Depth map of the input should be provided in data/depth/ folder. Otherwise you can use /scripts/predictDepth.py to estimate the depth using a DL model.
+
+#### Sequence preprocessing
+We also provide a script preprocessSequence.py that we used to center crop and modify the depth map captured with a kinect to fit our case.
