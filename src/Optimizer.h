@@ -46,20 +46,17 @@ double SH_basis_function(Vector3d& normal, int basis_index) {
 */
 class FeatureSimilarityEnergy {
 public:
-    FeatureSimilarityEnergy(const double& _landmarkWeight, const Vector2d& _landmark, const double& _depth, const FaceModel* _faceModel, const Face* _face,
-        const unsigned& _vertexIdx, Matrix4d _perspective_matrix, const unsigned& _viewport_width, const unsigned& _viewport_height, const double& _z_near, 
-        const double& _z_far, const bool& _expression) :
+    FeatureSimilarityEnergy(const double& _landmarkWeight, const Vector2d& _landmark, const FaceModel* _faceModel, const Face* _face,
+        const unsigned& _vertexIdx, Matrix4d _perspective_matrix, const unsigned& _viewport_width, const unsigned& _viewport_height, 
+        const bool& _expression) :
         landmarkWeight(_landmarkWeight),
         landmark(_landmark),
-        depth(_depth),
         faceModel(_faceModel),
         face(_face),
         vertexIdx(_vertexIdx),
         perspective_matrix(_perspective_matrix),
         viewport_width(_viewport_width),
         viewport_height(_viewport_height),
-        z_near(_z_near),
-        z_far(_z_far),
         expression(_expression)
     { }
 
@@ -92,15 +89,13 @@ public:
         vertex_clip_space /= vertex_clip_space(3, 0);
         T x_pixel_space = (vertex_clip_space(0, 0) + T(1)) * (T(viewport_width) / T(2));
         T y_pixel_space = T(viewport_height) - (vertex_clip_space(1, 0) + T(1)) * (T(viewport_height) / T(2));
-        T z = T(1) - ((T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_clip_space(2, 0) * (T(z_far) - T(z_near)))) - T(z_near)) / (T(z_far) - T(z_near));
         residuals[0] = (T(landmark(0)) - x_pixel_space)*T(landmarkWeight);
         residuals[1] = (T(landmark(1)) - y_pixel_space)*T(landmarkWeight);
-        residuals[2] = (T(depth) - z) * T(landmarkWeight);
         return true;
     }
 
 private:
-    const double landmarkWeight, depth, z_near, z_far;
+    const double landmarkWeight;
     const FaceModel* faceModel;
     const Face* face;
     const Vector2d landmark;
@@ -176,7 +171,7 @@ public:
         for (int i = 0; i < 3; ++i) {
             vertex_coord[i] = bary_coord(0) * vertices.col(0)(i) + bary_coord(1) * vertices.col(1)(i) + bary_coord(2) * vertices.col(2)(i);
         }
-        vertex_coord[2] = T(1) - ((T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_coord[2] * (T(z_far) - T(z_near)))) - T(z_near)) / (T(z_far) - T(z_near));
+        vertex_coord[2] = T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_coord[2] * (T(z_far) - T(z_near)));
 
         //      Point to point distance
         residuals[0] = (vertex_coord[0] - pixel_col) * T(pointWeight);
@@ -266,7 +261,7 @@ public:
 
         }
         for (int i = 0; i < 5; ++i) {
-            vertex_coords[i * 3 + 2] = T(1) - ((T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_coords[i * 3 + 2] * (T(z_far) - T(z_near)))) - T(z_near)) / (T(z_far) - T(z_near));
+            vertex_coords[i * 3 + 2] = T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_coords[i * 3 + 2] * (T(z_far) - T(z_near)));
         }
 
         Vector<T, 3> dzdx;
@@ -462,7 +457,7 @@ public:
             int intern_iteration = 20;
             // Add energy terms
             if (downsample) {
-                add_landmark_terms(problem, numLandmarks, img, source_depth_down, faceModel, alpha, gamma, poseIncrement, estimate_expression_only);
+                add_landmark_terms(problem, numLandmarks, img, faceModel, alpha, gamma, poseIncrement, estimate_expression_only);
                 add_regularization_terms(problem, alpha, beta, gamma);
                 if (i > 0) {
                     add_geometry_and_color_terms(problem, img, faceModel, source_depth_down, source_color_down, alpha, gamma, beta, poseIncrement, sh_red_coefficients,
@@ -471,7 +466,7 @@ public:
                 }
             }
             else {
-                add_landmark_terms(problem, numLandmarks, img, source_depth, faceModel, alpha, gamma, poseIncrement, estimate_expression_only);
+                add_landmark_terms(problem, numLandmarks, img, faceModel, alpha, gamma, poseIncrement, estimate_expression_only);
                 add_regularization_terms(problem, alpha, beta, gamma);
                 if (i > 0) {
                     add_geometry_and_color_terms(problem, img, faceModel, source_depth, source_color, alpha, gamma, beta, poseIncrement, sh_red_coefficients,
@@ -505,7 +500,7 @@ public:
 private:
     //--------------------------------------------------Functions for face reconstruction--------------------------------------------------//
     // add landmakr terms to the problem
-    void add_landmark_terms(ceres::Problem& problem, int numLandmarks, Image& img, MatrixXd& source_depth, FaceModel& faceModel,
+    void add_landmark_terms(ceres::Problem& problem, int numLandmarks, Image& img, FaceModel& faceModel,
         VectorXd& alpha, VectorXd& gamma, PoseIncrement<double>& poseIncrement, bool expression) {
         for (unsigned i = 17; i < numLandmarks; i++) {
             Vector2d landmark_coord;
@@ -522,15 +517,12 @@ private:
                 height = img.getHeight();
             }
 
-            double depth = source_depth(int(landmark_coord(1)), int(landmark_coord(0))) / 255.;
-            if (depth > 0) {
-                problem.AddResidualBlock(
-                    new ceres::AutoDiffCostFunction<FeatureSimilarityEnergy, 3, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6>
-                    (new FeatureSimilarityEnergy(landmarkWeight, landmark_coord, depth, &faceModel, &sourceFace, faceModel.getLandmarkVertexIdx(i),
-                        sourceFace.getIntrinsics(), width, height, sourceFace.get_z_near(), sourceFace.get_z_far(), expression)),
-                    nullptr, alpha.data(), gamma.data(), poseIncrement.getData()
-                );
-            }
+            problem.AddResidualBlock(
+                new ceres::AutoDiffCostFunction<FeatureSimilarityEnergy, 3, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6>
+                (new FeatureSimilarityEnergy(landmarkWeight, landmark_coord, &faceModel, &sourceFace, faceModel.getLandmarkVertexIdx(i),
+                    sourceFace.getIntrinsics(), width, height, expression)),
+                nullptr, alpha.data(), gamma.data(), poseIncrement.getData()
+            );
         }
     }
 

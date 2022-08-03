@@ -27,6 +27,10 @@ public:
 		DataHandler::readFaceModelLandmarks(_faceModel, landmarks);
 		updateBasisWithStd();	// basis with std applied
 		extraVertices = 0;
+		shapeMean = shapeMean * 2. / 1000.;
+		expMean = expMean * 2. / 1000.;
+		shapeBasis = shapeBasis * 2. / 1000.;
+		expBasis = expBasis * 2. / 1000.;
 	}
 	// getter and setters
 	std::string getFaceModelName() {

@@ -352,8 +352,8 @@ __global__ void raster_triangle(TriangleToRasterize* triangles, unsigned char* c
 
 							pixel_triangle_buffer[index] = triangle_index;
 
-							float linearized_depth = 1 - ((2.0 * z_near * z_far / (z_far + z_near - z_affine * (z_far - z_near))) - z_near)/(z_far - z_near);
-							depth_to_visualize[index] = fmaxf(linearized_depth, 0.f);
+							float original_depth = 2.0 * z_near * z_far / (z_far + z_near - z_affine * (z_far - z_near));
+							depth_to_visualize[index] = fmaxf(original_depth, 0.f);
 							int v_id_0 = indices_buffer[3 * triangle_index];
 							int v_id_1 = indices_buffer[3 * triangle_index + 1];
 							int v_id_2 = indices_buffer[3 * triangle_index + 2];

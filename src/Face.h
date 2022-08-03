@@ -19,9 +19,8 @@ public:
 		shape = faceModel.getShapeMean();
 		color = faceModel.getColorMean();
 		setIntrinsics(double(54), double(image.getWidth()) / double(image.getHeight()),
-			double(8800), double(9000));
+			double(0.01), double(1));
 		extrinsics = Matrix4d::Identity();
-		extrinsics(2, 3) = -400;
 	}
 	// Calls DataHandler to write the recontructed mesh in .obj format
 	void writeReconstructedFace() {
