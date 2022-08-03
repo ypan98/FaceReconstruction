@@ -97,7 +97,7 @@ public:
 		std::string pathToFile = PATH_TO_DEPTH_DIR + fileName + IMG_FORMAT;
 		try
 		{
-			cv::Mat image = cv::imread(pathToFile, cv::IMREAD_UNCHANGED);
+			cv::Mat image = cv::imread(pathToFile, cv::IMREAD_GRAYSCALE);
 			cv::cv2eigen(image, depthMap);
 			cv::Mat imageDown;
 			cv::resize(image, imageDown, cv::Size(image.cols / 2, image.rows / 2), 0, 0, cv::INTER_LINEAR);

@@ -23,16 +23,16 @@ void handleMenu() {
 
 void performTask1() {
 	// initialize
-	Face sourceFace = Face("W00000", "BFM17");
+	Face sourceFace = Face("sample1", "BFM17");
 	Image img = sourceFace.getImage();
 	Optimizer optimizer(sourceFace);
 	// optimize params
-	optimizer.optimize(false, false);
+	optimizer.optimize(false, true);
 	// render the result
 	Matrix4f mvp_matrix = sourceFace.getFullProjectionMatrix().transpose().cast<float>();
 	Matrix4f mv_matrix = sourceFace.getExtrinsics().transpose().cast<float>();
 	VectorXf vertices = sourceFace.getShapeWithExpression().cast<float>();
-	VectorXf colors = sourceFace.getColor().cast<float>();
+	VectorXf colors = sourceFace.calculateColorsDefault().cast<float>();
 	VectorXf sh_red_coefficients = sourceFace.getSHRedCoefficients().cast<float>();
 	VectorXf sh_green_coefficients = sourceFace.getSHGreenCoefficients().cast<float>();
 	VectorXf sh_blue_coefficients = sourceFace.getSHBlueCoefficients().cast<float>();

@@ -518,7 +518,7 @@ private:
             }
 
             problem.AddResidualBlock(
-                new ceres::AutoDiffCostFunction<FeatureSimilarityEnergy, 3, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6>
+                new ceres::AutoDiffCostFunction<FeatureSimilarityEnergy, 2, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6>
                 (new FeatureSimilarityEnergy(landmarkWeight, landmark_coord, &faceModel, &sourceFace, faceModel.getLandmarkVertexIdx(i),
                     sourceFace.getIntrinsics(), width, height, expression)),
                 nullptr, alpha.data(), gamma.data(), poseIncrement.getData()
@@ -633,7 +633,7 @@ private:
                             problem.AddResidualBlock(
                                 new ceres::AutoDiffCostFunction<GeometryPoint2PlaneConsistencyEnergy, 2, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6>
                                 (new GeometryPoint2PlaneConsistencyEnergy(planeWeight, vertex_indices, vertices_affine_bary_coords,
-                                    source_depth(i, j) / 255., point_normal_source, &faceModel, &sourceFace, projection_matrix, double(i) + 0.5, double(j) + 0.5,
+                                   source_depth(i, j), point_normal_source, &faceModel, &sourceFace, projection_matrix, double(i) + 0.5, double(j) + 0.5,
                                     double(width), double(height), sourceFace.get_z_near(), sourceFace.get_z_far(), estimate_expression_only)),
                                 nullptr, alpha.data(), gamma.data(), poseIncrement.getData()
                             );
@@ -644,7 +644,7 @@ private:
                     problem.AddResidualBlock(
                         new ceres::AutoDiffCostFunction<GeometryPoint2PointConsistencyEnergy, 3, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6>
                         (new GeometryPoint2PointConsistencyEnergy(pointWeight, indices, perspective_corrected_bary_coord,
-                            source_depth(i, j) / 255., &faceModel, &sourceFace, projection_matrix, double(i) + 0.5, double(j) + 0.5,
+                            source_depth(i, j), &faceModel, &sourceFace, projection_matrix, double(i) + 0.5, double(j) + 0.5,
                             double(width), double(height), sourceFace.get_z_near(), sourceFace.get_z_far(), estimate_expression_only)),
                         nullptr, alpha.data(), gamma.data(), poseIncrement.getData()
                     );

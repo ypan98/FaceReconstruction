@@ -2,6 +2,7 @@
 #include "Image.h"
 #include "FaceModel.h"
 #include "Utils.h"
+#include <math.h>
 
 // Class for a reconstructed 3D face
 class Face {
@@ -13,14 +14,15 @@ public:
 		alpha = VectorXd::Zero(faceModel.getAlphaSize());
 		beta = VectorXd::Zero(faceModel.getBetaSize());
 		gamma = VectorXd::Zero(faceModel.getGammaSize());
-		sh_red_coefficients = VectorXd::Zero(9);
-		sh_green_coefficients = VectorXd::Zero(9);
-		sh_blue_coefficients = VectorXd::Zero(9);
+		sh_red_coefficients = VectorXd::Ones(9);
+		sh_green_coefficients = VectorXd::Ones(9);
+		sh_blue_coefficients = VectorXd::Ones(9);
 		shape = faceModel.getShapeMean();
 		color = faceModel.getColorMean();
 		setIntrinsics(double(54), double(image.getWidth()) / double(image.getHeight()),
-			double(0.01), double(1));
+			double(0.01), double(10));
 		extrinsics = Matrix4d::Identity();
+		extrinsics(2, 3) = -0.6;
 	}
 	// Calls DataHandler to write the recontructed mesh in .obj format
 	void writeReconstructedFace() {
@@ -120,9 +122,10 @@ public:
 		return sh_blue_coefficients;
 	}
 	void setIntrinsics(double fov_, double aspect_ratio_, double z_near_, double z_far_) {
+		double f = 1. / tan(fov_ * (3.1415926 / 360));
 		Matrix4d perspective_projection_matrix = Matrix4d::Zero();
-		perspective_projection_matrix(0, 0) = fov_ / aspect_ratio_;
-		perspective_projection_matrix(1, 1) = fov_;
+		perspective_projection_matrix(0, 0) = f / aspect_ratio_;
+		perspective_projection_matrix(1, 1) = f;
 		perspective_projection_matrix(2, 2) = (z_near_ + z_far_) / (z_near_ - z_far_);
 		perspective_projection_matrix(2, 3) = (2 * z_near_ * z_far_) / (z_near_ - z_far_);
 		perspective_projection_matrix(3, 2) = -1;

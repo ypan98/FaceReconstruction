@@ -305,13 +305,11 @@ __global__ void raster_triangle(TriangleToRasterize* triangles, unsigned char* c
 					const int pixel_index_col = xi;
 
 					double z_affine = alpha * static_cast<double>(triangle.v0.position.z) + beta * static_cast<double>(triangle.v1.position.z) + gamma * static_cast<double>(triangle.v2.position.z);
-
 					if (z_affine > 1.0)
 					{
 						continue;
 					}
 					int index = pixel_index_row * width + pixel_index_col;
-
 					bool isLocked = false;
 					do
 					{
@@ -319,7 +317,6 @@ __global__ void raster_triangle(TriangleToRasterize* triangles, unsigned char* c
 						int depth = z_affine * INT_MAX;
 						atomicMin(&depth_buffer[index], depth);
 						if (depth_buffer[index] == depth) {
-
 							// We first store the affine barycentrinc weights
 							pixel_bary_coord_buffer[index * 6] = alpha;
 							pixel_bary_coord_buffer[index * 6 + 1] = beta;
@@ -428,6 +425,8 @@ void Renderer::initialiaze_rendering_context(FaceModel& face_model, int height, 
 	viewport_width = width;
 
 	// Initialize CPU buffers
+	cv::Mat depth = INT_MAX * cv::Mat::ones(viewport_height, viewport_width, CV_32SC1);
+
 	color_img = cv::Mat::zeros(viewport_height, viewport_width, CV_8UC3);
 	depth_img = cv::Mat::zeros(viewport_height, viewport_width, CV_32FC1);
 	pixel_bary_coord_buffer = cv::Mat::zeros(viewport_height, viewport_width, CV_64FC(6));
@@ -469,7 +468,7 @@ void Renderer::initialiaze_rendering_context(FaceModel& face_model, int height, 
 
 	// Initialiaze buffers
 	cudaMemcpyAsync(device_triangles, triangles.data(), num_triangles * 3 * sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpyAsync(device_depth, depth_img.data, viewport_height * viewport_width * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpyAsync(device_depth, depth.data, viewport_height * viewport_width * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpyAsync(device_depth_to_visualize, 0, viewport_height * viewport_width * sizeof(float), cudaMemcpyHostToDevice);
 
 	cudaMemsetAsync(device_rendered_color, 0, viewport_height * viewport_width * 3 * sizeof(unsigned char), streams[0]);
