@@ -44,21 +44,19 @@ def center_crop(img, wanted_h, wanted_w):
 
 # preprocess depth map by transforming from cm to m, removing background (> max_depth), flipping (whiter = higher distance) and normalizing to [0, 255]
 def preprocess_depth_map(image):
-    # to meter
-    image = image/1000 
     # background removal (to 0)
-    image[np.where(image > max_depth)] = 0 
+    image[np.where(image > max_depth * 1000)] = 0
     # min of detected points
-    minimun = np.min(image[np.where(image != 0)])
+    # minimun = np.min(image[np.where(image != 0)])
     # range of the remaining points
-    range = np.max(image)-minimun 
+    # range = np.max(image)-minimun
     # to [0, 1]
-    image[np.where(image != 0)] -= minimun
-    image[np.where(image != 0)] /= range
+    # image[np.where(image != 0)] -= minimun
+    # image[np.where(image != 0)] /= range
     # flipping (only point where is not 0)
-    image[np.where(image != 0)] = 1-image[np.where(image != 0)]
+    # image[np.where(image != 0)] = 1-image[np.where(image != 0)]
     # to [0, 255]
-    image = (255*image).astype(int)
+    # image = (255*image).astype(int)
     return image
 
 # loop over files
@@ -67,4 +65,4 @@ for file in files_in_folder:
     image = center_crop(image, output_h, output_w)
     if mode == "depth":
         image = preprocess_depth_map(image)
-    cv2.imwrite(output_folder+file, image)
+    cv2.imwrite(output_folder+"Y"+file, image)

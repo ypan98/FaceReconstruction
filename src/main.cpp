@@ -23,24 +23,24 @@ void handleMenu() {
 
 void performTask1() {
 	// initialize
-	Face sourceFace = Face("W00000", "BFM17");
+	Face sourceFace = Face("W00151", "BFM17");
 	Image img = sourceFace.getImage();
-	Optimizer optimizer(sourceFace);
+	Optimizer optimizer(sourceFace, false);
 	// optimize params
-	optimizer.optimize(false, false);
+	optimizer.optimize(false, true);
 	// render the result
 	Matrix4f mvp_matrix = sourceFace.getFullProjectionMatrix().transpose().cast<float>();
 	Matrix4f mv_matrix = sourceFace.getExtrinsics().transpose().cast<float>();
-	VectorXf vertices = sourceFace.getShapeWithExpression().cast<float>();
+	VectorXf vertices = sourceFace.getShapeWithExpression(sourceFace.getGamma()).cast<float>();
 	VectorXf colors = sourceFace.getColor().cast<float>();
 	VectorXf sh_red_coefficients = sourceFace.getSHRedCoefficients().cast<float>();
 	VectorXf sh_green_coefficients = sourceFace.getSHGreenCoefficients().cast<float>();
 	VectorXf sh_blue_coefficients = sourceFace.getSHBlueCoefficients().cast<float>();
-	Renderer rendererDownsampled(sourceFace.getFaceModel(), img.getHeightDown(), img.getWidthDown());
-	rendererDownsampled.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients, sourceFace.get_z_near(),
+	Renderer rendererOriginal(sourceFace.getFaceModel(), img.getHeight(), img.getWidth());
+	rendererOriginal.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients, sourceFace.get_z_near(),
 		sourceFace.get_z_far());
-	sourceFace.setColor(rendererDownsampled.get_re_rendered_vertex_color().cast<double>());
-	imshow("Reconstructed face", rendererDownsampled.get_color_buffer());
+	sourceFace.setColor(rendererOriginal.get_re_rendered_vertex_color().cast<double>());
+	imshow("Reconstructed face", rendererOriginal.get_color_buffer());
 	cv::waitKey(0);
 	// write out mesh
 	sourceFace.writeReconstructedFace();
@@ -64,7 +64,7 @@ void performTask2() {
 	FaceModel faceModelAux = targetFace.getFaceModel();
 	Matrix4f mvp_matrix = targetFace.getFullProjectionMatrix().transpose().cast<float>();
 	Matrix4f mv_matrix = targetFace.getExtrinsics().transpose().cast<float>();
-	VectorXf vertices = targetFace.getShapeWithExpression().cast<float>();
+	VectorXf vertices = targetFace.getShapeWithExpression(targetFace.getGamma()).cast<float>();
 	VectorXf colors = targetFace.getColor().cast<float>();
 	MatrixX3i triangulation = faceModelAux.getTriangulation();
 	VectorXf sh_red_coefficients = targetFace.getSHRedCoefficients().cast<float>();
@@ -86,6 +86,8 @@ void performTask2() {
 	// write out mesh
 	targetFace.writeReconstructedFace();
 	cout << "Resulting mesh is saved in /data/outputMesh/" << endl;
+	renderer.clear_buffers();
+	renderer.terminate_rendering_context();
 }
 
 /* Expression transfer of a sequence of images (target and source).
@@ -96,7 +98,7 @@ void performTask2() {
 * Note: this function is design for the way we name the sequence images
 */
 void performTask3() {
-	string sourceActor = "X";
+	string sourceActor = "Z";
 	string targetActor = "W";
 	int frameStep = 1;
 	int startFrame = 1;
@@ -104,13 +106,28 @@ void performTask3() {
 	Face sourceFace = Face(sourceActor+"00000", "BFM17");
 	Face targetFace = Face(targetActor+"00000", "BFM17");
 	Image img2 = targetFace.getImage();
-	Optimizer optimizer(sourceFace);
+	Optimizer optimizer(sourceFace, false);
 	optimizer.optimize(false, false,false);
-	Optimizer optimizer2(targetFace);
+	Optimizer optimizer2(targetFace, false);
 	optimizer2.optimize(false, false,false);
 	VectorXd sourceNeutralGamma = sourceFace.getGamma();
 	VectorXd targetNeutralGamma = targetFace.getGamma();
+
+	FaceModel faceModelAux = targetFace.getFaceModel();
+	VectorXf vertices = targetFace.getShapeWithExpression(targetFace.getGamma()).cast<float>();
+	VectorXf colors = targetFace.getColor().cast<float>();
+	MatrixX3i triangulation = faceModelAux.getTriangulation();
+	addBoundingSquareBehindMouse(vertices, colors, triangulation, faceModelAux.getLandmarks());
+	faceModelAux.setTriangulation(triangulation);
+	faceModelAux.setExtraVertices(4);
+	Renderer renderer(faceModelAux, img2.getHeight(), img2.getWidth());
+
 	for (int i = startFrame; i <= endFrame; i += frameStep) {
+		Matrix4d extrinsics = Matrix4d::Identity();
+		extrinsics(2, 3) = -0.6;
+		sourceFace.setExtrinsics(extrinsics);
+		targetFace.setExtrinsics(extrinsics);
+
 		cout << "Current frame: " << i << endl;
 		string frameName = to_string(i);
 		if (i >= 100) frameName = "00" + frameName;
@@ -120,13 +137,13 @@ void performTask3() {
 		targetFace.setImage(targetActor + frameName);
 		optimizer.optimize(true, false, false);
 		optimizer2.optimize(true, false, false);
-		// transfer expression
-		targetFace.setGamma(targetNeutralGamma + sourceFace.getGamma()-sourceNeutralGamma);
+		//targetFace.setGamma(targetNeutralGamma + sourceFace.getGamma()-sourceNeutralGamma);
 		// render the result
-		FaceModel faceModelAux = targetFace.getFaceModel();
 		Matrix4f mvp_matrix = targetFace.getFullProjectionMatrix().transpose().cast<float>();
 		Matrix4f mv_matrix = targetFace.getExtrinsics().transpose().cast<float>();
-		VectorXf vertices = targetFace.getShapeWithExpression().cast<float>();
+		// transfer expression
+		VectorXd transferred_gamma = targetNeutralGamma + sourceFace.getGamma() - sourceNeutralGamma;
+		VectorXf vertices = targetFace.getShapeWithExpression(transferred_gamma).cast<float>();
 		VectorXf colors = targetFace.getColor().cast<float>();
 		MatrixX3i triangulation = faceModelAux.getTriangulation();
 		VectorXf sh_red_coefficients = targetFace.getSHRedCoefficients().cast<float>();
@@ -134,15 +151,14 @@ void performTask3() {
 		VectorXf sh_blue_coefficients = targetFace.getSHBlueCoefficients().cast<float>();
 		// adding square behing the mouse
 		addBoundingSquareBehindMouse(vertices, colors, triangulation, faceModelAux.getLandmarks());
-		faceModelAux.setTriangulation(triangulation);
-		faceModelAux.setExtraVertices(4);
-		Renderer renderer(faceModelAux, img2.getHeight(), img2.getWidth());
 		renderer.render(mvp_matrix, mv_matrix, vertices, colors, sh_red_coefficients, sh_green_coefficients, sh_blue_coefficients, targetFace.get_z_near(),
 			targetFace.get_z_far());
 		cv::Mat renderedImg = renderer.get_color_buffer();
+		cv::Mat originalCopy = targetFace.getImage().getBGRCopy();
 		// merging the original image's backround to the rendered image
-		mergeBackground(targetFace.getImage().getBGRCopy(), renderedImg);
-		DataHandler::saveFrame(renderedImg, targetActor + frameName);
+		mergeBackground(originalCopy, renderedImg);
+		DataHandler::saveFrame(originalCopy, targetActor + frameName);
+		renderer.clear_buffers();
 	}
 	cout << "Resulting sequence saved in /data/outputSequence/" << endl;
 }
