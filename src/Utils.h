@@ -77,14 +77,14 @@ static void mergeBackground(cv::Mat& originalImg, cv::Mat& renderedImg) {
 // add a bounding box with almost black color behind the face (useful for the background merging step to skip the mouse region)
 static void addBoundingSquareBehindMouse(VectorXf&vertices, VectorXf&colors, MatrixX3i& triangulation, const VectorXi &landmarks) {
 	float color = 0.1;
-	float zDisplacement = 0.2;
+	float zDisplacement = -0.2;
 	int numVertices = vertices.rows();
 	int numTriangulation = triangulation.rows();
-	double maxX, maxY, maxZ = -1e7;
-	double minX, minY, minZ = 1e7;
+	double maxX, maxY, maxZ = -100.;
+	double minX, minY, minZ = 100;
 	// get bounding box by iterating over outer lip landmarks
 	for (int i = 48; i < 60; i++) {
-		double currX = vertices(3*landmarks(i));
+		double currX = vertices(3 * landmarks(i));
 		double currY = vertices(3 * landmarks(i) + 1);
 		double currZ = vertices(3 * landmarks(i) + 2);
 		if (currX > maxX) maxX = currX;
@@ -101,19 +101,19 @@ static void addBoundingSquareBehindMouse(VectorXf&vertices, VectorXf&colors, Mat
 	// v1 top-left
 	vertices(numVertices) = minX;
 	vertices(numVertices+1) = maxY;
-	vertices(numVertices+2) = minZ - zDisplacement;
+	vertices(numVertices+2) = minZ + zDisplacement;
 	// v2 top-right
 	vertices(numVertices+3) = maxX;
 	vertices(numVertices+4) = maxY;
-	vertices(numVertices+5) = minZ - zDisplacement;
+	vertices(numVertices+5) = minZ + zDisplacement;
 	// v3 bottom-left
 	vertices(numVertices+6) = minX;
 	vertices(numVertices+7) = minY;
-	vertices(numVertices+8) = minZ - zDisplacement;
+	vertices(numVertices+8) = minZ + zDisplacement;
 	// v3 bottom-right
 	vertices(numVertices+9) = maxX;
 	vertices(numVertices+10) = minY;
-	vertices(numVertices+11) = minZ - zDisplacement;
+	vertices(numVertices+11) = minZ + zDisplacement;
 	// c1 top-left
 	colors(numVertices) = color;
 	colors(numVertices + 1) = color;

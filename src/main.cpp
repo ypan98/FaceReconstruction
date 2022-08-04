@@ -100,7 +100,7 @@ void performTask2() {
 void performTask3() {
 	string sourceActor = "Z";
 	string targetActor = "W";
-	int frameStep = 5;
+	int frameStep = 1;
 	int startFrame = 1;
 	int endFrame = 224;
 	Face sourceFace = Face(sourceActor+"00000", "BFM17");
