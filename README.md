@@ -12,13 +12,7 @@ sudo /usr/sbin/update-ccache-symlinks
 echo 'export PATH="/usr/lib/ccache:$PATH"' | tee -a ~/.bashrc
 source ~/.bashrc && echo $PATH
 ```
-2. Install OpenGL libraries **glfw3** and **glew**.
-```
-sudo apt-get install libglew-dev
-sudo apt-get install libglfw3
-sudo apt-get install libglfw3-dev
-```
-3. Set your current working dictory to the root folder of this project, run the following code and do not close the terminal until the installation
+2. Set your current working dictory to the root folder of this project, run the following code and do not close the terminal until the installation
 is done.
 ```
 dos2unix install_dependencies_linux.sh
@@ -42,6 +36,9 @@ wsl
 ```
 3. Once you have activated wsl switch the current working directory to the root folder of this project and follow the same process described 
 for ubuntu users. (hint: to switch to disk C for example you can use cd /mnt/c/)
+
+### For Both Users
+Our method uses a cuda-parallelized rasterizer so in order to run this project you need to have a nvidia GPU with CUDA installed in your system.
 
 ## Build the project
 ### For Visual Studio users
