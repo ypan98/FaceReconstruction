@@ -111,9 +111,9 @@ __device__ TriangleToRasterize process_prospective_tri(ModelVertex v0, ModelVert
 	t.one_over_z2 = 1.0 / (double)t.v2.position.w;
 
 	// divide by w
-	t.v0.position = make_float4(t.v0.position.x / t.v0.position.w, t.v0.position.y / t.v0.position.w, t.v0.position.z / t.v0.position.w, t.v0.position.w / t.v0.position.w);
-	t.v1.position = make_float4(t.v1.position.x / t.v1.position.w, t.v1.position.y / t.v1.position.w, t.v1.position.z / t.v1.position.w, t.v1.position.w / t.v1.position.w);
-	t.v2.position = make_float4(t.v2.position.x / t.v2.position.w, t.v2.position.y / t.v2.position.w, t.v2.position.z / t.v2.position.w, t.v2.position.w / t.v2.position.w);
+	t.v0.position = make_float4(t.v0.position.x / t.v0.position.w, t.v0.position.y / t.v0.position.w, t.v0.position.z / t.v0.position.w, t.v0.position.w);
+	t.v1.position = make_float4(t.v1.position.x / t.v1.position.w, t.v1.position.y / t.v1.position.w, t.v1.position.z / t.v1.position.w, t.v1.position.w);
+	t.v2.position = make_float4(t.v2.position.x / t.v2.position.w, t.v2.position.y / t.v2.position.w, t.v2.position.z / t.v2.position.w, t.v2.position.w);
 
 	float2 v0_screen = clip_to_screen_space(make_float2(t.v0.position.x, t.v0.position.y), viewport_width, viewport_height);
 	t.v0.position.x = v0_screen.x;
@@ -298,6 +298,7 @@ __global__ void raster_triangle(TriangleToRasterize* triangles, unsigned char* c
 				double beta = implicit_line(x, y, triangle.v2.position, triangle.v0.position) * one_over_v1ToLine20;
 				double gamma = implicit_line(x, y, triangle.v0.position, triangle.v1.position) * one_over_v2ToLine01;
 
+				float original_depth = alpha * triangle.v0.position.w + beta * triangle.v1.position.w + gamma * triangle.v2.position.w;
 				// if pixel (x, y) is inside the triangle or on one of its edges
 				if (alpha >= 0 && beta >= 0 && gamma >= 0)
 				{
@@ -349,7 +350,6 @@ __global__ void raster_triangle(TriangleToRasterize* triangles, unsigned char* c
 
 							pixel_triangle_buffer[index] = triangle_index;
 
-							float original_depth = 2.0 * z_near * z_far / (z_far + z_near - z_affine * (z_far - z_near));
 							depth_to_visualize[index] = fmaxf(original_depth, 0.f);
 							int v_id_0 = indices_buffer[3 * triangle_index];
 							int v_id_1 = indices_buffer[3 * triangle_index + 1];
@@ -393,10 +393,12 @@ void Renderer::terminate_rendering_context() {
 	cudaFreeAsync(device_pixel_triangle, streams[9]);
 	cudaFreeAsync(device_depth, streams[10]);
 	cudaFreeAsync(device_pixel_triangle_normals, streams[11]);
+	cudaFreeAsync(device_depth_to_visualize, streams[12]);
 
 	// Free control buffer
-	cudaFreeAsync(device_depth_locked, streams[12]);
+	cudaFreeAsync(device_depth_locked, streams[13]);
 
+	cudaDeviceSynchronize();
 	for (int i = 0; i < 14; ++i) {
 		cudaStreamDestroy(streams[i]);
 	}
@@ -530,5 +532,7 @@ void Renderer::render(Matrix4f& mvp_matrix, Matrix4f& mv_matrix, VectorXf& verti
 	cudaMemcpyAsync(pixel_triangle_buffer.data, device_pixel_triangle, viewport_height * viewport_width * sizeof(int), cudaMemcpyDeviceToHost);
 	cudaMemcpyAsync(pixel_triangle_normals_buffer.data, device_pixel_triangle_normals, viewport_height * viewport_width * 9 * sizeof(float), cudaMemcpyDeviceToHost);
 	cudaMemcpyAsync(re_rendered_vertex_color.data(), device_colors, num_vertices * 3 * sizeof(float), cudaMemcpyDeviceToHost);
+
+	cudaFree(device_triangles_to_render);
 	cudaDeviceSynchronize();
 }

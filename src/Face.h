@@ -14,9 +14,9 @@ public:
 		alpha = VectorXd::Zero(faceModel.getAlphaSize());
 		beta = VectorXd::Zero(faceModel.getBetaSize());
 		gamma = VectorXd::Zero(faceModel.getGammaSize());
-		sh_red_coefficients = VectorXd::Ones(9);
-		sh_green_coefficients = VectorXd::Ones(9);
-		sh_blue_coefficients = VectorXd::Ones(9);
+		sh_red_coefficients = VectorXd::Zero(9);
+		sh_green_coefficients = VectorXd::Zero(9);
+		sh_blue_coefficients = VectorXd::Zero(9);
 		shape = faceModel.getShapeMean();
 		color = faceModel.getColorMean();
 		setIntrinsics(double(54), double(image.getWidth()) / double(image.getHeight()),
@@ -165,8 +165,8 @@ public:
 	VectorXd getShape() const {
 		return shape;
 	}
-	VectorXd getShapeWithExpression() const {
-		return shape + faceModel.getExpMean() + faceModel.getExpBasis() * gamma;
+	VectorXd getShapeWithExpression(VectorXd& gamma_) const {
+		return shape + faceModel.getExpMean() + faceModel.getExpBasis() * gamma_;
 	}
 	void setColor(VectorXd color_) {
 		color = color_;

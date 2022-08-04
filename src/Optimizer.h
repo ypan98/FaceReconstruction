@@ -47,8 +47,8 @@ double SH_basis_function(Vector3d& normal, int basis_index) {
 class FeatureSimilarityEnergy {
 public:
     FeatureSimilarityEnergy(const double& _landmarkWeight, const Vector2d& _landmark, const FaceModel* _faceModel, const Face* _face,
-        const unsigned& _vertexIdx, Matrix4d _perspective_matrix, const unsigned& _viewport_width, const unsigned& _viewport_height, 
-        const bool& _expression) :
+        const unsigned& _vertexIdx, Matrix4d _perspective_matrix, const unsigned& _viewport_width, const unsigned& _viewport_height, const double& _z_near,
+        const double& _z_far, const bool& _expression) :
         landmarkWeight(_landmarkWeight),
         landmark(_landmark),
         faceModel(_faceModel),
@@ -57,6 +57,8 @@ public:
         perspective_matrix(_perspective_matrix),
         viewport_width(_viewport_width),
         viewport_height(_viewport_height),
+        z_near(_z_near),
+        z_far(_z_far),
         expression(_expression)
     { }
 
@@ -86,16 +88,18 @@ public:
         Matrix<T, 4, 1> vertex_homogeneous;
         vertex_homogeneous << vertex_transformed[0], vertex_transformed[1], vertex_transformed[2], T(1);
         Matrix<T, -1, -1> vertex_clip_space = perspective_matrix * vertex_homogeneous;
+        T z = vertex_clip_space(3, 0);
         vertex_clip_space /= vertex_clip_space(3, 0);
         T x_pixel_space = (vertex_clip_space(0, 0) + T(1)) * (T(viewport_width) / T(2));
         T y_pixel_space = T(viewport_height) - (vertex_clip_space(1, 0) + T(1)) * (T(viewport_height) / T(2));
-        residuals[0] = (T(landmark(0)) - x_pixel_space)*T(landmarkWeight);
-        residuals[1] = (T(landmark(1)) - y_pixel_space)*T(landmarkWeight);
+        //T z = T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_clip_space(2, 0) * (T(z_far) - T(z_near)));
+        residuals[0] = (T(landmark(0)) - x_pixel_space) * T(landmarkWeight);
+        residuals[1] = (T(landmark(1)) - y_pixel_space) * T(landmarkWeight);
         return true;
     }
 
 private:
-    const double landmarkWeight;
+    const double landmarkWeight, z_near, z_far;
     const FaceModel* faceModel;
     const Face* face;
     const Vector2d landmark;
@@ -136,6 +140,7 @@ public:
 
         Matrix<T, 4, 3> vertices;
         PoseIncrement<T> pose_inc(const_cast<T* const>(extrinsicsArr));
+        T depth[3];
         for (int i = 0; i < 3; ++i) {
             // Calculate vertices
             if (!expression) {
@@ -159,6 +164,8 @@ public:
             // Apply perspective projection
             vertices.col(i) = perspective_matrix * vertices.col(i);
 
+            depth[i] = vertices.col(i)(3);
+
             // To clip space
             vertices.col(i) = vertices.col(i) / vertices.col(i)(3);
 
@@ -171,12 +178,13 @@ public:
         for (int i = 0; i < 3; ++i) {
             vertex_coord[i] = bary_coord(0) * vertices.col(0)(i) + bary_coord(1) * vertices.col(1)(i) + bary_coord(2) * vertices.col(2)(i);
         }
-        vertex_coord[2] = T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_coord[2] * (T(z_far) - T(z_near)));
+        //vertex_coord[2] = T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_coord[2] * (T(z_far) - T(z_near)));
+        T rendered_depth = bary_coord(0) * depth[0] + bary_coord(1) * depth[1] + bary_coord(2) * depth[2];
 
         //      Point to point distance
         residuals[0] = (vertex_coord[0] - pixel_col) * T(pointWeight);
         residuals[1] = (vertex_coord[1] - pixel_row) * T(pointWeight);
-        residuals[2] = (vertex_coord[2] - depth_source) * T(pointWeight);
+        residuals[2] = (rendered_depth - depth_source) * T(pointWeight);
         return true;
     }
 private:
@@ -222,6 +230,8 @@ public:
 
         Matrix<T, 4, 15> vertices;
         PoseIncrement<T> pose_inc(const_cast<T* const>(extrinsicsArr));
+
+        T depth[15];
         for (int i = 0; i < 15; ++i) {
             // Calculate vertices
             if (!expression) {
@@ -245,6 +255,8 @@ public:
             // Apply perspective projection
             vertices.col(i) = perspective_matrix * vertices.col(i);
 
+            depth[i] = vertices.col(i)(3);
+
             // To clip space
             vertices.col(i) = vertices.col(i) / vertices.col(i)(3);
 
@@ -254,31 +266,30 @@ public:
         }
 
         T vertex_coords[15];
+        T depth_rendered[5];
+
         for (int i = 0; i < 5; ++i) {
             vertex_coords[i * 3] = T(bary_coords(i * 3)) * vertices.col(i * 3)(0) + T(bary_coords(i * 3 + 1)) * vertices.col(i * 3 + 1)(0) + T(bary_coords(i * 3 + 2)) * vertices.col(i * 3 + 2)(0);
             vertex_coords[i * 3 + 1] = T(bary_coords(i * 3)) * vertices.col(i * 3)(1) + T(bary_coords(i * 3 + 1)) * vertices.col(i * 3 + 1)(1) + T(bary_coords(i * 3 + 2)) * vertices.col(i * 3 + 2)(1);
             vertex_coords[i * 3 + 2] = T(bary_coords(i * 3)) * vertices.col(i * 3)(2) + T(bary_coords(i * 3 + 1)) * vertices.col(i * 3 + 1)(2) + T(bary_coords(i * 3 + 2)) * vertices.col(i * 3 + 2)(2);
-
-        }
-        for (int i = 0; i < 5; ++i) {
-            vertex_coords[i * 3 + 2] = T(2) * T(z_near) * T(z_far) / (T(z_far) + T(z_near) - vertex_coords[i * 3 + 2] * (T(z_far) - T(z_near)));
+            depth_rendered[i] = T(bary_coords(i * 3)) * depth[i * 3] + T(bary_coords(i * 3 + 1)) * depth[i * 3 + 1] + T(bary_coords(i * 3 + 2)) * depth[i * 3 + 2];
         }
 
         Vector<T, 3> dzdx;
-        dzdx << vertex_coords[12] - vertex_coords[9], vertex_coords[10]-vertex_coords[13], vertex_coords[14] - vertex_coords[11];
+        dzdx << vertex_coords[12] - vertex_coords[9], vertex_coords[10]-vertex_coords[13], depth_rendered[4] - depth_rendered[3];
         Vector<T, 3> dzdy;
-        dzdy << vertex_coords[6] - vertex_coords[3], vertex_coords[7] - vertex_coords[4], vertex_coords[8] - vertex_coords[5];
+        dzdy << vertex_coords[6] - vertex_coords[3], vertex_coords[7] - vertex_coords[4], depth_rendered[2] - depth_rendered[1];
         Vector<T, 3> point_normal_estimated = -(dzdx).cross(dzdy);
         point_normal_estimated.normalize();
 
         //      Point to plane distance from model to input
         residuals[0] = T(planeWeight) * ((vertex_coords[0] - T(pixel_col)) * T(point_normal_source(0)) +
             (vertex_coords[1] - T(pixel_row)) * T(point_normal_source(1)) +
-            (vertex_coords[2] - T(depth_source)) * T(point_normal_source(2)));
+            (depth_rendered[0] - T(depth_source)) * T(point_normal_source(2)));
         //      Point to plane distance from input to model
         residuals[1] = T(planeWeight) * ((T(pixel_col) - vertex_coords[0]) * point_normal_estimated(0) +
             (T(pixel_row) - vertex_coords[1]) * point_normal_estimated(1) +
-            (T(depth_source) - vertex_coords[2]) * point_normal_estimated(2));
+            (T(depth_source) - depth_rendered[0]) * point_normal_estimated(2));
         return true;
     }
 private:
@@ -405,8 +416,8 @@ class Optimizer {
 
 public:
     // constructor with optimizer options and energy term weights
-    Optimizer(Face& _sourceFace, bool _downsample = true, double _landmakrWeight = 0.35, double _pointWeight = 0.8, double _planeWeight = 2.23, double _colorWeight = 4.47, 
-        double _shapeRegWeight = 0.05, double _expRegWeight = 0.05, double _coloRegWeight = 0.05, int _maxIteration = 5):sourceFace(_sourceFace) {
+    Optimizer(Face& _sourceFace, bool _downsample = true, double _landmakrWeight = 1, double _pointWeight = 1.14, double _planeWeight = 3.33, double _colorWeight = 4.47, 
+        double _shapeRegWeight = 10, double _expRegWeight = 8, double _coloRegWeight = 0.05, int _maxIteration = 5):sourceFace(_sourceFace) {
         downsample = _downsample;
 
         // Initialize energy weights
@@ -422,6 +433,7 @@ public:
         // Initialize renderers
         Image img = sourceFace.getImage();
         rendererOriginal = Renderer(sourceFace.getFaceModel(), img.getHeight(), img.getWidth());
+        rendererDownsampled = Renderer(sourceFace.getFaceModel(), img.getHeightDown(), img.getWidthDown());
         rendererDownsampled = Renderer(sourceFace.getFaceModel(), img.getHeightDown(), img.getWidthDown());
     }
 
@@ -457,7 +469,7 @@ public:
             int intern_iteration = 20;
             // Add energy terms
             if (downsample) {
-                add_landmark_terms(problem, numLandmarks, img, faceModel, alpha, gamma, poseIncrement, estimate_expression_only);
+                add_landmark_terms(problem, numLandmarks, img, source_depth_down, faceModel, alpha, gamma, poseIncrement, estimate_expression_only);
                 add_regularization_terms(problem, alpha, beta, gamma);
                 if (i > 0) {
                     add_geometry_and_color_terms(problem, img, faceModel, source_depth_down, source_color_down, alpha, gamma, beta, poseIncrement, sh_red_coefficients,
@@ -466,7 +478,7 @@ public:
                 }
             }
             else {
-                add_landmark_terms(problem, numLandmarks, img, faceModel, alpha, gamma, poseIncrement, estimate_expression_only);
+                add_landmark_terms(problem, numLandmarks, img, source_depth, faceModel, alpha, gamma, poseIncrement, estimate_expression_only);
                 add_regularization_terms(problem, alpha, beta, gamma);
                 if (i > 0) {
                     add_geometry_and_color_terms(problem, img, faceModel, source_depth, source_color, alpha, gamma, beta, poseIncrement, sh_red_coefficients,
@@ -495,12 +507,12 @@ public:
             VectorXd estimated_color = sourceFace.getColor();
             optimize_texture(img, faceModel, source_depth, source_color, estimated_color);
             sourceFace.setColor(estimated_color);
-        }
+        }        
     }
 private:
     //--------------------------------------------------Functions for face reconstruction--------------------------------------------------//
     // add landmakr terms to the problem
-    void add_landmark_terms(ceres::Problem& problem, int numLandmarks, Image& img, FaceModel& faceModel,
+    void add_landmark_terms(ceres::Problem& problem, int numLandmarks, Image& img, MatrixXd& source_depth, FaceModel& faceModel,
         VectorXd& alpha, VectorXd& gamma, PoseIncrement<double>& poseIncrement, bool expression) {
         for (unsigned i = 17; i < numLandmarks; i++) {
             Vector2d landmark_coord;
@@ -516,11 +528,10 @@ private:
                 width = img.getWidth();
                 height = img.getHeight();
             }
-
             problem.AddResidualBlock(
                 new ceres::AutoDiffCostFunction<FeatureSimilarityEnergy, 2, BFM_ALPHA_SIZE, BFM_GAMMA_SIZE, 6>
                 (new FeatureSimilarityEnergy(landmarkWeight, landmark_coord, &faceModel, &sourceFace, faceModel.getLandmarkVertexIdx(i),
-                    sourceFace.getIntrinsics(), width, height, expression)),
+                    sourceFace.getIntrinsics(), width, height, sourceFace.get_z_near(), sourceFace.get_z_far(), expression)),
                 nullptr, alpha.data(), gamma.data(), poseIncrement.getData()
             );
         }
@@ -591,7 +602,6 @@ private:
             cv::imshow("rendered face model at iteration: " + std::to_string(iteration), color_buffer);
             cv::waitKey(0);
         }
-
         for (unsigned i = 0; i < height; ++i) {
             for (unsigned j = 0; j < width; ++j) {
                 float depth = rendered_depth_buffer.at<float>(i, j);
@@ -599,7 +609,7 @@ private:
                     Vector3i indices = faceModel.getTriangulationByRow(indices_buffer.at<int>(i, j));
                     Vector3d perspective_corrected_bary_coord;
                     perspective_corrected_bary_coord << bary_coords.at<cv::Vec6d>(i, j)[3], bary_coords.at<cv::Vec6d>(i, j)[4], bary_coords.at<cv::Vec6d>(i, j)[5];
-                    if ((i > 0) && (i < img.getHeight() - 1) && (j > 0) && (j < img.getWidth() - 1)) {
+                    if ((i > 0) && (i < height - 1) && (j > 0) && (j < width - 1)) {
                         float depth_top = rendered_depth_buffer.at<float>(i - 1, j);
                         float depth_down = rendered_depth_buffer.at <float> (i + 1, j);
                         float depth_left = rendered_depth_buffer.at<float>(i, j - 1);
@@ -689,7 +699,7 @@ private:
 
         Matrix4f mvp_matrix = sourceFace.getFullProjectionMatrix().cast<float>().transpose();
         Matrix4f mv_matrix = sourceFace.getExtrinsics().cast<float>().transpose();
-        VectorXf vertices = sourceFace.getShapeWithExpression().cast<float>();
+        VectorXf vertices = sourceFace.getShapeWithExpression(sourceFace.getGamma()).cast<float>();
         VectorXf colors = sourceFace.getColor().cast<float>();
         VectorXf sh_red_coefficients_ = sourceFace.getSHRedCoefficients().cast<float>();
         VectorXf sh_green_coefficients_ = sourceFace.getSHGreenCoefficients().cast<float>();
@@ -758,7 +768,7 @@ private:
         ceres::Solver::Options options;
         options.num_threads = omp_get_max_threads();
         options.max_num_iterations = max_iterations;
-        options.linear_solver_type = ceres::DENSE_QR;
+        options.linear_solver_type = solver_type;
         options.dense_linear_algebra_library_type = ceres::CUDA;
         options.minimizer_progress_to_stdout = false;
         ceres::Solver::Summary summary;
@@ -772,4 +782,5 @@ private:
     Renderer rendererDownsampled, rendererOriginal;
     double landmarkWeight, shapeRegWeight, expRegWeight, colorRegWeight, pointWeight, planeWeight, colorWeight;
     int maxIteration;
+    MatrixXd lastLandmarks;
 };
