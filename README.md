@@ -1,7 +1,14 @@
 # FaceReconstruction
 
-This is work from the couse 3D Scanning and Motion Capture @TUM [IN2354]. The goal of the project is to do facial expression transfer from one actor to another. For this end, a 3D parametric face model is fit (optimized) w.r.t. the input RGB-D sequences in a non-linear least squares way.
-<br/> To see the results, check the images in papers/final_report.
+This is work from the couse 3D Scanning and Motion Capture @TUM [IN2354]. The goal of the project is to do facial expression transfer from one actor to another. For this end, a 3D parametric face model is fit (optimized) w.r.t. the input RGB-D sequences in a non-linear least squares way, following the approach of Justus et al. 2015.
+
+To see the results, check the images in papers/final_report.
+
+<strong>Authors</strong>
+1. Yimin Pan
+2. Weixiao Xia
+3. Wei Yi
+4. Xiyue Zhang
 
 ## Install Dependencies
 In order to install dependencies for this project please follow the following steps.
