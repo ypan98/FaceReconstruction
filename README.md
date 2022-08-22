@@ -1,4 +1,8 @@
 # FaceReconstruction
+
+This is work from the couse 3D Scanning and Motion Capture @TUM [IN2354]. The goal of the project is to do facial expression transfer from one actor to another. For this end, a 3D parametric face model is fit (optimized) w.r.t. the input RGB-D sequences in a non-linear least squares way.
+<br/> To see the results, check the images in papers/final_report.
+
 ## Install Dependencies
 In order to install dependencies for this project please follow the following steps.
 ### For Ubuntu Users
@@ -60,23 +64,37 @@ make -j8
 ```
 
 ## Data Preparation
-Some files needs to be placed in certain directories so the program can find them correctly:
+Some files needs to be placed in certain directories so the program can find them correctly.
+###  The face model dataset
+Containing informations like basis, mean, std...
 ```
 - data/
     BFM17.h5      # Basel Face Model 2017, which can be downloaded from "https://faces.dmi.unibas.ch/bfm/bfm2017.html" (the simplified model)
 ```
+### Input image (RGB-D)
+Basically the RGB and depth map image from which the face mesh is reconstructed.
+```
+- data/
+    samples/
+        depth/
+            sample.png      # Sample depth map
+        rgb/
+            sample.png      # Sample RGB 
+            
+Landmarks are needed too, but this can be predicted from the RGB input with the provided script.
+```
+
 ### Preprocessin scripts
-The programs are implemented with python and you would need to install some packages before running them:
+The scripts are implemented in Python and you would need to install some packages to execute them:
 ```
 cd scripts
 pip install -r requirements.txt
 ```
-
 #### Landmarks
 You have to run /scripts/extractLandmarks.py to precompute the location of the landmarks for the input image (or sequence), before trying to run the program and fit the face model.
 
 #### Depth
-Depth map of the input should be provided in data/depth/ folder. Otherwise you can use /scripts/predictDepth.py to estimate the depth using a DL model.
+If you dont have the depth map but only the RGB image, an option is to use /scripts/predictDepth.py to estimate it using a DL model. Although the result is much noisier compared to one that is captured by depth sensors. Therefore, the reconstruction result is no that great.
 
 #### Sequence preprocessing
-We also provide a script preprocessSequence.py that we used to center crop and modify the depth map captured with a kinect to fit our case.
+We also provide a script preprocessSequence.py that we used to center crop and adapt the depth map captured with a kinect to fit our case. 
